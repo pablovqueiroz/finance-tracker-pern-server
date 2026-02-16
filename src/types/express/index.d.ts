@@ -1,12 +1,12 @@
-import "express";
-import type { JwtPayload } from "jsonwebtoken";
-import type { File } from "multer";
+import type { AuthTokenPayload } from "./auth.types";
 
 declare global {
   namespace Express {
     interface Request {
-      payload?: string | JwtPayload;
-      file?: File;
+      payload?: AuthTokenPayload;
+      file?: Express.Multer.File;
     }
   }
 }
+
+export {};

@@ -62,9 +62,8 @@ export const createUser = async (
     });
 
     const { password: _, ...userWithoutPassword } = user;
-    res.status(201).json(userWithoutPassword);
-    console.log({ message: "User created" });
-    console.log("FILE:", req.file);
+
+    return res.status(201).json(userWithoutPassword);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error creating user" });
@@ -123,7 +122,14 @@ export const login = async (req: Request<{}, {}, LoginBody>, res: Response) => {
       expiresIn: "7d",
     });
 
-    return res.status(200).json({ authToken });
+    return res.status(200).json({
+      authToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -133,14 +139,13 @@ export const login = async (req: Request<{}, {}, LoginBody>, res: Response) => {
 };
 
 //get logged user
-
 export const getCurrentUser = async (req: Request, res: Response) => {
   try {
     if (!req.payload) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = (req.payload as any).userId;
+    const userId = req.payload!.userId;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -156,7 +161,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      res.status(404).json({ message: "User not found." });
+      return res.status(404).json({ message: "User not found." });
     }
 
     return res.status(200).json(user);
@@ -188,7 +193,7 @@ export const updateUser = async (
       });
     }
 
-    const userId = (req.payload as any).userId;
+    const userId = req.payload!.userId;
     const { name, gender, currentPassword, newPassword, confirmNewPassword } =
       req.body;
 
@@ -203,10 +208,10 @@ export const updateUser = async (
     const updateData: Prisma.UserUpdateInput = {};
 
     //update name
-    if (name) updateData.name = name;
+    if (name !== undefined) updateData.name = name;
 
     //update genre
-    if (gender) updateData.gender = gender;
+    if (gender !== undefined) updateData.gender = gender;
 
     //update password
     if (newPassword || confirmNewPassword) {
@@ -295,7 +300,7 @@ export const deleteUser = async (
         message: "Unauthorized",
       });
     }
-    const userId = (req.payload as any).userId;
+    const userId = req.payload!.userId;
     const { password } = req.body;
     if (!password) {
       return res.status(400).json({

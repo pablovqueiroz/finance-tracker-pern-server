@@ -13,72 +13,6 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id       String       @id @default(uuid())
-  name     String
-  email    String       @unique
-  password String?
-  gender   Gender?
-  provider AuthProvider @default(LOCAL)
-  googleId String?      @unique
-
-  image         String    @default("https://res.cloudinary.com/dacvtyyst/image/upload/v1769168326/bwcwiefeph34flwiwohy.jpg")
-  imagePublicId String?
-  accounts      Account[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt
-}
-
-model Transaction {
-  id       String          @id @default(uuid())
-  title    String
-  amount   Decimal         @db.Decimal(10, 2)
-  type     TransactionType
-  category String
-  date     DateTime        @default(now())
-
-  accountId String
-  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-
-  @@index([accountId])
-}
-
-model SavingGoal {
-  id            String   @id @default(uuid())
-  title         String
-  targetAmount  Decimal  @db.Decimal(10,2)
-  currentAmount Decimal  @default(0) @db.Decimal(10,2)
-  deadline      DateTime?
-
-  accountId String
-  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-
-  @@index([accountId])
-}
-
-model Account {
-  id       String   @id @default(uuid())
-  name     String
-  currency Currency @default(EUR)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  transactions Transaction[]
-  savingGoals  SavingGoal[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-
-  @@index([userId])
-}
-
 enum TransactionType {
   income
   expense
@@ -97,6 +31,25 @@ enum Currency {
   JPY
 }
 
+enum AccountRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
 enum Gender {
   male
   female
@@ -107,4 +60,175 @@ enum Gender {
   genderfluid
   prefer_not_to_say
   other
+}
+
+
+model User {
+  id       String       @id @default(uuid())
+  name     String
+  email    String       @unique
+  password String?
+  gender   Gender?
+  provider AuthProvider @default(LOCAL)
+  googleId String?      @unique
+
+  image         String  @default("https://res.cloudinary.com/dacvtyyst/image/upload/v1769168326/bwcwiefeph34flwiwohy.jpg")
+  imagePublicId String?
+
+  // Many-to-many relationship via AccountUser
+  accounts AccountUser[]
+
+  // Transactions
+  transactionsCreated Transaction[] @relation("TransactionCreatedBy")
+  transactionsUpdated Transaction[] @relation("TransactionUpdatedBy")
+
+  //Saving Goals
+  savingGoalsCreated SavingGoal[] @relation("SavingGoalCreatedBy")
+  savingGoalsUpdated SavingGoal[] @relation("SavingGoalUpdatedBy")
+
+  //Audit Logs
+  auditLogs AuditLog[]
+
+  //invitations
+  invitesSent AccountInvite[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  currency    Currency @default(EUR)
+
+  // Members
+  users AccountUser[]
+
+  // Core Entities
+  transactions Transaction[]
+  savingGoals  SavingGoal[]
+
+  // Audit & Invites
+  auditLogs AuditLog[]
+  invites   AccountInvite[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model AccountUser {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  role AccountRole @default(MEMBER)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, accountId])
+  @@index([accountId])
+}
+
+model AccountInvite {
+  id String @id @default(uuid())
+
+  email String
+  token String @unique
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  role AccountRole @default(MEMBER)
+
+  status InviteStatus @default(PENDING)
+
+  invitedById String
+  invitedBy   User   @relation(fields: [invitedById], references: [id])
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email, accountId])
+  @@index([email])
+  @@index([accountId])
+}
+
+model Transaction {
+  id       String          @id @default(uuid())
+  title    String
+  amount   Decimal         @db.Decimal(10, 2)
+  type     TransactionType
+  category String
+  notes    String?
+  date     DateTime        @default(now())
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation("TransactionCreatedBy", fields: [createdById], references: [id])
+
+  updatedById String?
+  updatedBy   User?   @relation("TransactionUpdatedBy", fields: [updatedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([accountId, type])
+  @@index([accountId, date])
+}
+
+model SavingGoal {
+  id            String    @id @default(uuid())
+  title         String
+  targetAmount  Decimal   @db.Decimal(10, 2)
+  currentAmount Decimal   @default(0) @db.Decimal(10, 2)
+  deadline      DateTime?
+  notes         String?
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation("SavingGoalCreatedBy", fields: [createdById], references: [id])
+
+  updatedById String?
+  updatedBy   User?   @relation("SavingGoalUpdatedBy", fields: [updatedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId])
+}
+
+model AuditLog {
+  id String @id @default(uuid())
+
+  action     AuditAction
+  entityType String
+  entityId   String
+
+  oldData Json?
+  newData Json?
+
+  performedById String
+  performedBy   User   @relation(fields: [performedById], references: [id])
+
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([accountId])
+  @@index([entityId])
+  @@index([performedById])
 }
