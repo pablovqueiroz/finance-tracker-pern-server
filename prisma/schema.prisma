@@ -14,8 +14,8 @@ datasource db {
 }
 
 enum TransactionType {
-  income
-  expense
+  INCOME
+  EXPENSE
 }
 
 enum AuthProvider {
@@ -37,6 +37,27 @@ enum AccountRole {
   MEMBER
 }
 
+enum Category {
+  HOUSING
+  ELECTRICITY
+  WATER
+  GAS
+  HOME_INTERNET
+  MOBILE_PHONE
+  GROCERIES
+  RESTAURANTS_DELIVERY
+  TRANSPORT_FUEL
+  HEALTH_PHARMACY
+  LEISURE_HOBBIES
+  SUBSCRIPTIONS_STREAMING
+  SHOPPING
+  EDUCATION
+  PERSONAL_CARE
+  INVESTMENTS
+  DEBT_INSTALLMENTS
+  OTHERS
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -51,17 +72,16 @@ enum InviteStatus {
 }
 
 enum Gender {
-  male
-  female
-  non_binary
-  trans_man
-  trans_woman
-  agender
-  genderfluid
-  prefer_not_to_say
-  other
+  MALE
+  FEMALE
+  NON_BINARY
+  TRANS_MAN
+  TRANS_WOMAN
+  AGENDER
+  GENDERFLUID
+  PREFER_NOT_TO_SAY
+  OTHER
 }
-
 
 model User {
   id       String       @id @default(uuid())
@@ -117,7 +137,6 @@ model Account {
   updatedAt DateTime @updatedAt
 }
 
-
 model AccountUser {
   id String @id @default(uuid())
 
@@ -166,7 +185,7 @@ model Transaction {
   title    String
   amount   Decimal         @db.Decimal(10, 2)
   type     TransactionType
-  category String
+  category Category
   notes    String?
   date     DateTime        @default(now())
 
@@ -185,6 +204,7 @@ model Transaction {
   @@index([accountId])
   @@index([accountId, type])
   @@index([accountId, date])
+  @@index([accountId, category])
 }
 
 model SavingGoal {

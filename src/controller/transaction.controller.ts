@@ -1,5 +1,9 @@
 import type { Request, Response } from "express";
-import { Prisma, TransactionType } from "../../generated/prisma/client.js";
+import {
+  Prisma,
+  TransactionType,
+  Category,
+} from "../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { isAdminOrOwner } from "../utils/permisions.js";
 import { buildDateFilter } from "../utils/dateFilter.js";
@@ -9,7 +13,7 @@ interface CreateTransactionBody {
   title: string;
   amount: number;
   type: TransactionType;
-  category: string;
+  category: Category;
   notes?: string;
   date?: string;
   accountId: string;
@@ -26,6 +30,14 @@ export const createTransaction = async (
 
     const userId = req.payload.id;
     const { title, amount, type, category, notes, date, accountId } = req.body;
+
+    if (!Object.values(TransactionType).includes(type)) {
+      return res.status(400).json({ message: "Invalid transaction type" });
+    }
+
+    if (!Object.values(Category).includes(category)) {
+      return res.status(400).json({ message: "Invalid category" });
+    }
 
     const accountUser = await prisma.accountUser.findUnique({
       where: {
@@ -138,7 +150,7 @@ interface UpdateTransactionBody {
   title?: string;
   amount?: number;
   type?: TransactionType;
-  category?: string;
+  category?: Category;
   notes?: string;
   date?: string;
 }
@@ -181,6 +193,20 @@ export const updateTransaction = async (
     }
 
     const { title, amount, type, category, notes, date } = req.body;
+
+    if (
+      type !== undefined &&
+      !Object.values(TransactionType).includes(type as TransactionType)
+    ) {
+      return res.status(400).json({ message: "Invalid transaction type" });
+    }
+
+    if (
+      category !== undefined &&
+      !Object.values(Category).includes(category as Category)
+    ) {
+      return res.status(400).json({ message: "Invalid category" });
+    }
 
     const data: Prisma.TransactionUpdateInput = {
       ...(title !== undefined && { title }),
@@ -322,9 +348,9 @@ export const getAccountSummary = async (
     summary.forEach((item) => {
       const value = Number(item._sum.amount ?? 0);
 
-      if (item.type === "income") {
+      if (item.type === "INCOME") {
         totalIncome = value;
-      } else if (item.type === "expense") {
+      } else if (item.type === "EXPENSE") {
         totalExpense = value;
       }
     });
@@ -377,7 +403,7 @@ export const getCategoryAnalytics = async (
 
     const whereClause: Prisma.TransactionWhereInput = {
       accountId,
-      type: "expense",
+      type: "EXPENSE",
       ...dateFilter,
     };
 
@@ -472,7 +498,7 @@ export const getDashboardData = async (
           by: ["category"],
           where: {
             ...whereClause,
-            type: "expense",
+            type: "EXPENSE",
           },
           _sum: { amount: true },
           orderBy: {
@@ -492,8 +518,8 @@ export const getDashboardData = async (
     summaryData.forEach((item) => {
       const value = Number(item._sum.amount ?? 0);
 
-      if (item.type === "income") totalIncome = value;
-      if (item.type === "expense") totalExpense = value;
+      if (item.type === "INCOME") totalIncome = value;
+      if (item.type === "EXPENSE") totalExpense = value;
     });
 
     const totalExpenses = categoryAnalytics.reduce(
