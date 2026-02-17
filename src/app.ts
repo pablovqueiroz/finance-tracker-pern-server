@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import accountRoutes from "./routes/account.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
+import savingGoalsRoutes from "./routes/savingGoals.routes.js"
 
 dotenv.config();
 
@@ -23,5 +24,8 @@ app.use("/accounts", accountRoutes);
 
 //transaction.routes.ts
 app.use("/transactions", transactionRoutes);
+
+//savingGoals.routes.ts
+app.use("/saving-goals", savingGoalsRoutes)
 
 export default app;

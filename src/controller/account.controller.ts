@@ -110,10 +110,7 @@ interface UpadateAccountBody {
   currency?: Currency;
 }
 
-export const updateAccount = async (
-  req: Request<AccountParams, {}, UpadateAccountBody>,
-  res: Response,
-) => {
+export const updateAccount = async (req: Request, res: Response) => {
   try {
     if (!req.payload) {
       return res.status(401).json({
@@ -122,7 +119,7 @@ export const updateAccount = async (
     }
 
     const userId = req.payload.id;
-    const { accountId } = req.params;
+    const { accountId } = req.params as { accountId: string };
     const { name, description, currency } = req.body;
 
     const membership = await prisma.accountUser.findUnique({
@@ -168,17 +165,14 @@ export const updateAccount = async (
 };
 
 //delete a account
-export const deleteAccount = async (
-  req: Request<AccountParams>,
-  res: Response,
-) => {
+export const deleteAccount = async (req: Request, res: Response) => {
   try {
     if (!req.payload) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const userId = req.payload.id;
-    const { accountId } = req.params;
+    const { accountId } = req.params as { accountId: string };
 
     const membership = await prisma.accountUser.findUnique({
       where: {

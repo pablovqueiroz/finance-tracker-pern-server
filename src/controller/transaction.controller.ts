@@ -70,17 +70,14 @@ export const createTransaction = async (
 };
 
 //get all transactions per account
-export const getTransactions = async (
-  req: Request<{ accountId: string }>,
-  res: Response,
-) => {
+export const getTransactions = async (req: Request, res: Response) => {
   try {
     if (!req.payload) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const userId = req.payload.id;
-    const { accountId } = req.params;
+    const { accountId } = req.params as { accountId: string };
 
     const accountUser = await prisma.accountUser.findUnique({
       where: {
@@ -96,7 +93,7 @@ export const getTransactions = async (
       where: { accountId },
       orderBy: { date: "desc" },
     });
-
+    
     return res.json(transactions);
   } catch (error) {
     console.error(error);
@@ -105,17 +102,14 @@ export const getTransactions = async (
 };
 
 //get transaction by id
-export const getTransactionsById = async (
-  req: Request<{ id: string }>,
-  res: Response,
-) => {
+export const getTransactionsById = async (req: Request, res: Response) => {
   try {
     if (!req.payload) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const userId = req.payload.id;
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
     const transaction = await prisma.transaction.findUnique({
       where: { id },
