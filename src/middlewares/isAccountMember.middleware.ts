@@ -13,7 +13,7 @@ export const isAccountMember = async (
       });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
 
     const accountIdParam = req.params.accountId;
 

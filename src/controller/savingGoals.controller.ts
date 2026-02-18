@@ -21,7 +21,7 @@ export const createSavingGoal = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
 
     const { title, targetAmount, deadline, notes, accountId } = req.body;
 
@@ -66,7 +66,7 @@ export const getSavingGoals = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { accountId } = req.params as { accountId: string };
 
     const accountUser = await prisma.accountUser.findUnique({
@@ -99,7 +99,7 @@ export const getSavingGoalById = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { id } = req.params as { id: string };
 
     const savingGoal = await prisma.savingGoal.findUnique({
@@ -145,7 +145,7 @@ export const moveMoneyOnSavingGoal = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { id } = req.params;
     const { amount, type } = req.body;
 
@@ -228,7 +228,7 @@ export const updateSavingGoal = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { id } = req.params;
 
     const existing = await prisma.savingGoal.findUnique({
@@ -302,7 +302,7 @@ export const deleteSavingGoal = async (
       return res.status(404).json({ message: "Saving goal not found" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
 
     const accountUser = await prisma.accountUser.findUnique({
       where: {

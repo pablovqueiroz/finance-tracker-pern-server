@@ -10,7 +10,7 @@ export const getAccounts = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
 
     const memberships = await prisma.accountUser.findMany({
       where: { userId },
@@ -80,7 +80,7 @@ export const createAccount = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { name, description, currency } = req.body;
 
     if (!name) {
@@ -118,7 +118,7 @@ export const updateAccount = async (req: Request, res: Response) => {
       });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { accountId } = req.params as { accountId: string };
     const { name, description, currency } = req.body;
 
@@ -171,7 +171,7 @@ export const deleteAccount = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { accountId } = req.params as { accountId: string };
 
     const membership = await prisma.accountUser.findUnique({

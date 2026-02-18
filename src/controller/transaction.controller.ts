@@ -28,7 +28,7 @@ export const createTransaction = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { title, amount, type, category, notes, date, accountId } = req.body;
 
     if (!Object.values(TransactionType).includes(type)) {
@@ -76,7 +76,7 @@ export const getTransactions = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { accountId } = req.params as { accountId: string };
 
     const accountUser = await prisma.accountUser.findUnique({
@@ -108,7 +108,7 @@ export const getTransactionsById = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { id } = req.params as { id: string };
 
     const transaction = await prisma.transaction.findUnique({
@@ -158,7 +158,7 @@ export const updateTransaction = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { id } = req.params;
 
     const existing = await prisma.transaction.findUnique({
@@ -255,7 +255,7 @@ export const deleteTransaction = async (
       return res.status(404).json({ message: "Transaction not found" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
 
     const accountUser = await prisma.accountUser.findUnique({
       where: {
@@ -300,7 +300,7 @@ export const getAccountSummary = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { accountId } = req.params;
     const { month, year } = req.query;
 
@@ -377,7 +377,7 @@ export const getCategoryAnalytics = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { accountId } = req.params;
     const { month, year } = req.query;
 
@@ -458,7 +458,7 @@ export const getDashboardData = async (
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userId = req.payload.id;
+    const userId = req.payload.userId;
     const { accountId } = req.params;
     const { month, year } = req.query;
 

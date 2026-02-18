@@ -8,6 +8,7 @@ import {
   updateAccount,
   deleteAccount,
 } from "../controller/account.controller.js";
+import accountMemberRoutes from "../routes/accountMembers.routes.js";
 
 const router = Router();
 
@@ -25,5 +26,13 @@ router.put("/:accountId", isAuthenticated, isAccountMember, updateAccount);
 
 // DELETE account
 router.delete("/:accountId", isAuthenticated, isAccountMember, deleteAccount);
+
+//manage members
+router.use(
+  "/:accountId/members",
+  isAuthenticated,
+  isAccountMember,
+  accountMemberRoutes,
+);
 
 export default router;

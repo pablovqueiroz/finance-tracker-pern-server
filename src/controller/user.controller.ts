@@ -6,6 +6,9 @@ import { uploadImage } from "../services/cloudinaryService.js";
 import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
 import type { Prisma } from "../../generated/prisma/client.js";
+import { OAuth2Client } from "google-auth-library";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 //create a user
 interface CreateUserBody {
@@ -90,12 +93,6 @@ export const login = async (req: Request<{}, {}, LoginBody>, res: Response) => {
 
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials." });
-    }
-
-    if (user.provider !== "LOCAL") {
-      return res
-        .status(400)
-        .json({ message: "Use Google login for this account." });
     }
 
     if (!user.password) {
@@ -348,5 +345,127 @@ export const deleteUser = async (
     return res.status(500).json({
       message: "Error deleting user.",
     });
+  }
+};
+
+//google login
+interface GoogleLoginBody {
+  idToken: string;
+}
+
+export const googleLogin = async (
+  req: Request<{}, {}, GoogleLoginBody>,
+  res: Response,
+) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ message: "idToken is required." });
+    }
+    const googleClientId = process.env.GOOGLE_CLIENT_ID;
+    if (!googleClientId) {
+      return res.status(500).json({ message: "Google auth not configured." });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: googleClientId,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload) {
+      return res.status(401).json({ message: "Invalid Google token." });
+    }
+
+    const googleId = payload.sub;
+    const email = payload.email;
+    const name = payload.name;
+    const picture = payload.picture;
+    const emailVerified = payload.email_verified;
+
+    if (!googleId || !email) {
+      return res.status(400).json({ message: "Invalid Google payload." });
+    }
+
+    if (!emailVerified) {
+      return res.status(401).json({ message: "Google email not verified." });
+    }
+    const googleIdValue: string = googleId;
+    const emailValue: string = email;
+
+    let user = await prisma.user.findUnique({
+      where: { googleId: googleIdValue },
+    });
+
+    if (!user) {
+      const existingByEmail = await prisma.user.findUnique({
+        where: { email: emailValue },
+      });
+
+      if (existingByEmail) {
+        user = await prisma.user.update({
+          where: { id: existingByEmail.id },
+          data: {
+            googleId: googleIdValue,
+            ...(picture && { image: picture }),
+          },
+        });
+      } else {
+        const fallbackName = emailValue.split("@")[0] ?? "Google User";
+        user = await prisma.user.create({
+          data: {
+            name: name ?? fallbackName,
+            email: emailValue,
+            password: null,
+            provider: "GOOGLE",
+            googleId: googleIdValue,
+            ...(picture && { image: picture }),
+          },
+        });
+      }
+    }
+
+    const authPayload = {
+      userId: user.id,
+      email: user.email,
+    };
+
+    const authToken = jwt.sign(
+      authPayload,
+      process.env.TOKEN_SECRET as string,
+      {
+        algorithm: "HS256",
+        expiresIn: "7d",
+      },
+    );
+
+    return res.status(200).json({
+      authToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+  } catch (error: unknown) {
+    console.error(error);
+
+    // Google token validation/auth errors
+    if (
+      error instanceof Error &&
+      (error.message.includes("Token used too late") ||
+        error.message.includes("Wrong number of segments") ||
+        error.message.includes("Invalid token signature") ||
+        error.message.includes("No pem found") ||
+        error.message.includes("audience") ||
+        error.message.includes("Invalid token"))
+    ) {
+      return res.status(401).json({ message: "Invalid Google token." });
+    }
+
+    // Internal/server errors
+    return res.status(500).json({ message: "Error during Google login." });
   }
 };
