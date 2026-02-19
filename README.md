@@ -64,6 +64,8 @@ npx prisma generate
 ## Scripts
 
 - `npm run dev`: run the server in development mode with watch (`tsx`)
+- `npm run test`: run tests with Vitest
+- `npm run test:watch`: run Vitest in watch mode
 - `npm run build`: compile TypeScript
 - `npm run start`: run the compiled build (`dist/server.js`)
 
@@ -78,6 +80,11 @@ Protected routes require this header:
 ```http
 Authorization: Bearer <token>
 ```
+
+## Security
+
+- `helmet` is enabled globally.
+- Rate limit is enabled for `/api/auth` to reduce brute-force attempts.
 
 ## Auth Behavior (Local + Google)
 
@@ -182,6 +189,20 @@ Audit entries are created automatically for:
 - Never commit `.env` to version control.
 - Commit only `.env.example` with placeholder values.
 - Rotate secrets immediately if any real values were exposed.
+
+## Cloudinary Uploads
+
+- Uploaded profile images are stored in the `finance-tracker` folder.
+
+## Testing
+
+Run:
+
+```bash
+npm run test
+```
+
+Current automated coverage includes basic auth integration checks (`src/tests/auth.test.ts`).
 
 ## Folder Structure
 
