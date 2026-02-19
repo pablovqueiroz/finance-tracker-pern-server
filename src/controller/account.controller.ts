@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { prisma } from "../../lib/prisma.js";
 import type { Currency } from "../../generated/prisma/enums.js";
 import type { Prisma } from "../../generated/prisma/client.js";
+import { logAudit, toAuditJson } from "../utils/auditLog.js";
 
 //get all accounts by user
 export const getAccounts = async (req: Request, res: Response) => {
@@ -96,6 +97,15 @@ export const createAccount = async (
       },
     });
 
+    await logAudit({
+      action: "CREATE",
+      entityType: "Account",
+      entityId: account.id,
+      performedById: userId,
+      accountId: account.id,
+      newData: toAuditJson(account),
+    });
+
     return res.status(201).json(account);
   } catch (error) {
     console.error(error);
@@ -152,9 +162,23 @@ export const updateAccount = async (req: Request, res: Response) => {
       });
     }
 
+    const existingAccount = await prisma.account.findUnique({
+      where: { id: accountId },
+    });
+
     const updated = await prisma.account.update({
       where: { id: accountId },
       data: updateData,
+    });
+
+    await logAudit({
+      action: "UPDATE",
+      entityType: "Account",
+      entityId: updated.id,
+      performedById: userId,
+      accountId: updated.id,
+      ...(existingAccount && { oldData: toAuditJson(existingAccount) }),
+      newData: toAuditJson(updated),
     });
 
     res.status(200).json(updated);
@@ -189,9 +213,24 @@ export const deleteAccount = async (req: Request, res: Response) => {
       });
     }
 
+    const existingAccount = await prisma.account.findUnique({
+      where: { id: accountId },
+    });
+
     await prisma.account.delete({
       where: { id: accountId },
     });
+
+    if (existingAccount) {
+      await logAudit({
+        action: "DELETE",
+        entityType: "Account",
+        entityId: existingAccount.id,
+        performedById: userId,
+        accountId: existingAccount.id,
+        oldData: toAuditJson(existingAccount),
+      });
+    }
 
     return res.status(200).json({ message: "Account deleted successfully." });
   } catch (error) {

@@ -1,5 +1,11 @@
 node_modules
 # Keep environment variables out of version control
 .env
-
+TESTS.md
+google-token.html
 /generated/prisma
+
+
+dist/
+*.tsbuildinfo
+.vscode/

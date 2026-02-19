@@ -7,6 +7,7 @@ import {
 import { prisma } from "../../lib/prisma.js";
 import { isAdminOrOwner } from "../utils/permisions.js";
 import { buildDateFilter } from "../utils/dateFilter.js";
+import { logAudit, toAuditJson } from "../utils/auditLog.js";
 
 //create transaction
 interface CreateTransactionBody {
@@ -60,6 +61,15 @@ export const createTransaction = async (
         ...(notes !== undefined && { notes }),
         ...(date && { date: new Date(date) }),
       },
+    });
+
+    await logAudit({
+      action: "CREATE",
+      entityType: "Transaction",
+      entityId: transaction.id,
+      performedById: userId,
+      accountId: transaction.accountId,
+      newData: toAuditJson(transaction),
     });
 
     return res.status(201).json(transaction);
@@ -227,6 +237,16 @@ export const updateTransaction = async (
       data,
     });
 
+    await logAudit({
+      action: "UPDATE",
+      entityType: "Transaction",
+      entityId: updated.id,
+      performedById: userId,
+      accountId: updated.accountId,
+      oldData: toAuditJson(existing),
+      newData: toAuditJson(updated),
+    });
+
     return res.json(updated);
   } catch (error) {
     console.error(error);
@@ -276,6 +296,15 @@ export const deleteTransaction = async (
 
     await prisma.transaction.delete({
       where: { id },
+    });
+
+    await logAudit({
+      action: "DELETE",
+      entityType: "Transaction",
+      entityId: existing.id,
+      performedById: userId,
+      accountId: existing.accountId,
+      oldData: toAuditJson(existing),
     });
 
     return res.json({ message: "Transaction deleted successfully" });

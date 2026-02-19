@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { prisma } from "../../lib/prisma.js";
 import { Prisma } from "../../generated/prisma/client.js";
+import { logAudit, toAuditJson } from "../utils/auditLog.js";
 
 //create a saving goals
 interface createSavingGoalBody {
@@ -51,6 +52,15 @@ export const createSavingGoal = async (
       return res.status(403).json({ message: "Access denied." });
     }
     const savingGoal = await prisma.savingGoal.create({ data });
+
+    await logAudit({
+      action: "CREATE",
+      entityType: "SavingGoal",
+      entityId: savingGoal.id,
+      performedById: userId,
+      accountId: savingGoal.accountId,
+      newData: toAuditJson(savingGoal),
+    });
 
     return res.status(201).json(savingGoal);
   } catch (error) {
@@ -202,6 +212,16 @@ export const moveMoneyOnSavingGoal = async (
       },
     });
 
+    await logAudit({
+      action: "UPDATE",
+      entityType: "SavingGoal",
+      entityId: updatedGoal.id,
+      performedById: userId,
+      accountId: updatedGoal.accountId,
+      oldData: toAuditJson(savingGoal),
+      newData: toAuditJson(updatedGoal),
+    });
+
     return res.status(200).json(updatedGoal);
   } catch (error) {
     console.error(error);
@@ -275,6 +295,16 @@ export const updateSavingGoal = async (
       data,
     });
 
+    await logAudit({
+      action: "UPDATE",
+      entityType: "SavingGoal",
+      entityId: updated.id,
+      performedById: userId,
+      accountId: updated.accountId,
+      oldData: toAuditJson(existing),
+      newData: toAuditJson(updated),
+    });
+
     return res.json(updated);
   } catch (error) {
     console.error(error);
@@ -320,6 +350,16 @@ export const deleteSavingGoal = async (
     await prisma.savingGoal.delete({
       where: { id },
     });
+
+    await logAudit({
+      action: "DELETE",
+      entityType: "SavingGoal",
+      entityId: existing.id,
+      performedById: userId,
+      accountId: existing.accountId,
+      oldData: toAuditJson(existing),
+    });
+
     return res.json({ message: "Saving goal deleted successfully" });
   } catch (error) {
     console.error(error);

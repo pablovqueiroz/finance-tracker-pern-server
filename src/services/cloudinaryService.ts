@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import type { UploadApiResponse, UploadApiErrorResponse } from "cloudinary";
+import "../../config/cloudinary.js";
 
 export const uploadImage = async (
   fileBuffer: Buffer,
@@ -7,7 +8,7 @@ export const uploadImage = async (
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder: "rot/avatars",
+        folder: "finance-tracker",
         transformation: [{ width: 500, height: 500, crop: "limit" }],
         allowed_formats: ["jpg", "jpeg", "png"],
       },

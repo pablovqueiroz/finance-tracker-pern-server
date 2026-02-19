@@ -152,17 +152,30 @@ Google login body example:
 - `POST /invites/:token/reject`
 - `PATCH /invites/:inviteId/expire`
 - `POST /invites/:inviteId`
+- `PATCH /invites/:inviteId/cancel`
+- `DELETE /invites/:inviteId`
 
 #### Invite Expiration Rule
 
 - Invites are created with a 7-day validity.
 - `PENDING` invites with `expiresAt` in the past are marked as `EXPIRED`.
 - Invites can also be expired manually by the user who sent them.
+- Re-sending invite for the same `email + accountId` is supported when the previous invite is no longer `PENDING`.
 
 ### Audit Logs
 
 - `GET /accounts/:accountId/audit-logs`
 - `GET /accounts/:accountId/audit-logs/:id`
+
+#### Audit Log Coverage
+
+Audit entries are created automatically for:
+
+- Transactions: `CREATE`, `UPDATE`, `DELETE`
+- Accounts: `CREATE`, `UPDATE`, `DELETE`
+- Account Members: `UPDATE` (role), `DELETE`
+- Saving Goals: `CREATE`, `UPDATE`, `DELETE`
+- Invites: `CREATE`, `UPDATE` (accept/reject/expire/cancel/resend)
 
 ## Security Note
 

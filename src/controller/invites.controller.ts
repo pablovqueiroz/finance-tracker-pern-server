@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { prisma } from "../../lib/prisma.js";
 import crypto from "crypto";
+import { logAudit, toAuditJson } from "../utils/auditLog.js";
 
 
 //expired invites
@@ -41,32 +42,86 @@ export const sendInvite = async (req: Request, res: Response) => {
       return res.status(403).json({ message: "Not allowed." });
     }
 
-    // check if has already invites sent
-    const existingInvite = await prisma.accountInvite.findFirst({
+    const invitedUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (invitedUser) {
+      const isAlreadyMember = await prisma.accountUser.findUnique({
+        where: {
+          userId_accountId: {
+            userId: invitedUser.id,
+            accountId,
+          },
+        },
+      });
+
+      if (isAlreadyMember) {
+        return res.status(400).json({ message: "User is already a member." });
+      }
+    }
+
+    // generate random token
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const existingInvite = await prisma.accountInvite.findUnique({
       where: {
-        email,
-        accountId,
-        status: "PENDING",
+        email_accountId: {
+          email,
+          accountId,
+        },
       },
     });
 
-    if (existingInvite) {
+    if (existingInvite && existingInvite.status === "PENDING" && existingInvite.expiresAt > new Date()) {
       return res.status(400).json({ message: "Invite already exists." });
     }
 
-    //generate random token
-    const token = crypto.randomBytes(32).toString("hex");
+    let invite;
 
-    const invite = await prisma.accountInvite.create({
-      data: {
-        email,
+    if (existingInvite) {
+      invite = await prisma.accountInvite.update({
+        where: { id: existingInvite.id },
+        data: {
+          role,
+          token,
+          invitedById: userId,
+          status: "PENDING",
+          expiresAt,
+        },
+      });
+
+      await logAudit({
+        action: "UPDATE",
+        entityType: "AccountInvite",
+        entityId: invite.id,
+        performedById: userId,
         accountId,
-        role,
-        token,
-        invitedById: userId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
+        oldData: toAuditJson(existingInvite),
+        newData: toAuditJson(invite),
+      });
+    } else {
+      invite = await prisma.accountInvite.create({
+        data: {
+          email,
+          accountId,
+          role,
+          token,
+          invitedById: userId,
+          expiresAt,
+        },
+      });
+
+      await logAudit({
+        action: "CREATE",
+        entityType: "AccountInvite",
+        entityId: invite.id,
+        performedById: userId,
+        accountId,
+        newData: toAuditJson(invite),
+      });
+    }
 
     return res.status(201).json(invite);
   } catch (error) {
@@ -242,6 +297,16 @@ export const acceptInvite = async (req: Request, res: Response) => {
       }),
     ]);
 
+    await logAudit({
+      action: "UPDATE",
+      entityType: "AccountInvite",
+      entityId: invite.id,
+      performedById: userId,
+      accountId: invite.accountId,
+      oldData: toAuditJson(invite),
+      newData: toAuditJson({ ...invite, status: "ACCEPTED" }),
+    });
+
     return res.status(200).json({ message: "Invite accepted" });
   } catch (error) {
     console.error(error);
@@ -277,9 +342,19 @@ export const expireInvite = async (req: Request, res: Response) => {
       });
     }
 
-    await prisma.accountInvite.update({
+    const updatedInvite = await prisma.accountInvite.update({
       where: { id: inviteId },
       data: { status: "EXPIRED" },
+    });
+
+    await logAudit({
+      action: "UPDATE",
+      entityType: "AccountInvite",
+      entityId: invite.id,
+      performedById: userId,
+      accountId: invite.accountId,
+      oldData: toAuditJson(invite),
+      newData: toAuditJson(updatedInvite),
     });
 
     return res.status(200).json({ message: "Invite expired." });
@@ -307,10 +382,21 @@ export const rejectInvite = async (req: Request, res: Response) => {
       return res.status(403).json({ message: "Not alloweds." });
     }
 
-    await prisma.accountInvite.update({
+    const updatedInvite = await prisma.accountInvite.update({
       where: { id: invite.id },
       data: { status: "CANCELLED" },
     });
+
+    await logAudit({
+      action: "UPDATE",
+      entityType: "AccountInvite",
+      entityId: invite.id,
+      performedById: req.payload.userId,
+      accountId: invite.accountId,
+      oldData: toAuditJson(invite),
+      newData: toAuditJson(updatedInvite),
+    });
+
     return res.status(200).json({ message: "Invite rejected" });
   } catch (error) {
     console.error(error);
@@ -336,9 +422,19 @@ export const cancelInvite = async (req: Request, res: Response) => {
       return res.status(403).json({ message: "Not allowed." });
     }
 
-    await prisma.accountInvite.update({
+    const updatedInvite = await prisma.accountInvite.update({
       where: { id: inviteId },
       data: { status: "CANCELLED" },
+    });
+
+    await logAudit({
+      action: "UPDATE",
+      entityType: "AccountInvite",
+      entityId: invite.id,
+      performedById: userId,
+      accountId: invite.accountId,
+      oldData: toAuditJson(invite),
+      newData: toAuditJson(updatedInvite),
     });
 
     return res.status(200).json({ message: "Invite cancelled." });

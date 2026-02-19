@@ -36,5 +36,7 @@ router.patch("/:inviteId/expire", isAuthenticated, expireInvite);
 
 //cancel invite
 router.post("/:inviteId", isAuthenticated, cancelInvite);
+router.patch("/:inviteId/cancel", isAuthenticated, cancelInvite);
+router.delete("/:inviteId", isAuthenticated, cancelInvite);
 
 export default router;

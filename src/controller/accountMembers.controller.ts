@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { prisma } from "../../lib/prisma.js";
 import { AccountRole } from "../../generated/prisma/enums.js";
+import { logAudit, toAuditJson } from "../utils/auditLog.js";
 
 //get all members of an account
 export const getAccountMembers = async (req: Request, res: Response) => {
@@ -113,6 +114,16 @@ export const updateMemberRole = async (req: Request, res: Response) => {
       data: { role },
     });
 
+    await logAudit({
+      action: "UPDATE",
+      entityType: "AccountMember",
+      entityId: updated.id,
+      performedById: userId,
+      accountId,
+      oldData: toAuditJson(memberToUpdate),
+      newData: toAuditJson(updated),
+    });
+
     return res.status(200).json(updated);
   } catch (error) {
     console.error(error);
@@ -180,6 +191,15 @@ export const removeMember = async (req: Request, res: Response) => {
 
     await prisma.accountUser.delete({
       where: { id: memberId },
+    });
+
+    await logAudit({
+      action: "DELETE",
+      entityType: "AccountMember",
+      entityId: memberToRemove.id,
+      performedById: userId,
+      accountId,
+      oldData: toAuditJson(memberToRemove),
     });
 
     return res.status(200).json({ message: "Member removed." });
