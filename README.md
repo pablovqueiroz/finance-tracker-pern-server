@@ -222,3 +222,7 @@ prisma/
 config/
 lib/
 ```
+
+## Related Repository
+
+- Frontend (cliente): https://github.com/pablovqueiroz/finance-tracker-pern-client
