@@ -16,9 +16,6 @@ const app = express();
 
 config(app);
 
-//error handler
-app.use(errorHandler);
-
 // auth.routes.ts
 app.use("/api/auth", authRoutes);
 
@@ -39,5 +36,8 @@ app.use("/api/invites", inviteRoutes);
 
 //auditLog.routes.js
 app.use("/api", auditLogRoutes);
+
+//error handler (must be after routes)
+app.use(errorHandler);
 
 export default app;
