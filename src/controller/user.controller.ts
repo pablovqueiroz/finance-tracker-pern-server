@@ -284,7 +284,8 @@ export const updateUser = async (
 
 //delete user
 interface DeleteUserBody {
-  password: string;
+  password?: string;
+  googleIdToken?: string;
 }
 
 export const deleteUser = async (
@@ -298,12 +299,7 @@ export const deleteUser = async (
       });
     }
     const userId = req.payload!.userId;
-    const { password } = req.body;
-    if (!password) {
-      return res.status(400).json({
-        message: "Password is required to delete account",
-      });
-    }
+    const { password, googleIdToken } = req.body ?? {};
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -313,17 +309,70 @@ export const deleteUser = async (
       return res.status(404).json({ message: "User not found." });
     }
 
-    //if GOOGLE
-    if (!user.password) {
-      return res.status(400).json({
-        message: "OAuth users must confirm identity via Google.",
-      });
+    // LOCAL users must confirm with password
+    if (user.provider === "LOCAL") {
+      if (!password) {
+        return res.status(400).json({
+          message: "Password is required to delete account",
+        });
+      }
+
+      if (!user.password) {
+        return res.status(400).json({
+          message: "Password account without stored password.",
+        });
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: "Incorrect password." });
+      }
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // Users linked to Google must perform a fresh Google reauthentication for account deletion.
+    if (user.googleId) {
+      if (!googleIdToken) {
+        return res.status(400).json({
+          message: "Google reauthentication is required to delete account.",
+        });
+      }
 
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Incorrect password." });
+      const googleClientId = process.env.GOOGLE_CLIENT_ID;
+      if (!googleClientId) {
+        return res.status(500).json({ message: "Google auth not configured." });
+      }
+
+      const ticket = await googleClient.verifyIdToken({
+        idToken: googleIdToken,
+        audience: googleClientId,
+      });
+      const googlePayload = ticket.getPayload();
+
+      if (!googlePayload) {
+        return res.status(401).json({ message: "Invalid Google token." });
+      }
+
+      if (googlePayload.sub !== user.googleId) {
+        return res.status(401).json({
+          message: "Google account does not match authenticated user.",
+        });
+      }
+
+      // Require fresh sign-in (step-up): token must be issued very recently.
+      const tokenIssuedAt = googlePayload.iat;
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+      const maxAgeInSeconds = 5 * 60;
+
+      if (
+        !tokenIssuedAt ||
+        nowInSeconds - tokenIssuedAt > maxAgeInSeconds ||
+        nowInSeconds < tokenIssuedAt
+      ) {
+        return res.status(401).json({
+          message: "Google reauthentication expired. Please try again.",
+        });
+      }
     }
 
     //delete image from Cloudinary
@@ -342,6 +391,19 @@ export const deleteUser = async (
     });
   } catch (error) {
     console.error(error);
+
+    if (
+      error instanceof Error &&
+      (error.message.includes("Token used too late") ||
+        error.message.includes("Wrong number of segments") ||
+        error.message.includes("Invalid token signature") ||
+        error.message.includes("No pem found") ||
+        error.message.includes("audience") ||
+        error.message.includes("Invalid token"))
+    ) {
+      return res.status(401).json({ message: "Invalid Google token." });
+    }
+
     return res.status(500).json({
       message: "Error deleting user.",
     });
