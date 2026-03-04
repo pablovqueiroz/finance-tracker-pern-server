@@ -61,6 +61,10 @@ npx prisma migrate dev
 npx prisma generate
 ```
 
+Latest migration added in this update:
+
+- `20260304152350_add_income_categories` (extends `Category` enum for income transactions)
+
 ## Scripts
 
 - `npm run dev`: run the server in development mode with watch (`tsx`)
@@ -139,6 +143,44 @@ Google login body example:
 - `GET /transactions/:id`
 - `PUT /transactions/:id`
 - `DELETE /transactions/:id`
+
+#### Transaction Categories
+
+`Category` now supports both expense and income categories.
+
+Income categories:
+
+- `SALARY`
+- `BONUS`
+- `FREELANCE`
+- `BUSINESS_REVENUE`
+- `RENTAL_INCOME`
+- `DIVIDENDS`
+- `INTEREST`
+- `REFUNDS`
+- `GIFTS_RECEIVED`
+- `OTHERS`
+
+Expense categories (existing):
+
+- `HOUSING`
+- `ELECTRICITY`
+- `WATER`
+- `GAS`
+- `HOME_INTERNET`
+- `MOBILE_PHONE`
+- `GROCERIES`
+- `RESTAURANTS_DELIVERY`
+- `TRANSPORT_FUEL`
+- `HEALTH_PHARMACY`
+- `LEISURE_HOBBIES`
+- `SUBSCRIPTIONS_STREAMING`
+- `SHOPPING`
+- `EDUCATION`
+- `PERSONAL_CARE`
+- `INVESTMENTS`
+- `DEBT_INSTALLMENTS`
+- `OTHERS`
 
 ### Saving Goals (`/saving-goals`)
 

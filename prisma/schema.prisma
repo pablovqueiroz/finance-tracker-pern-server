@@ -38,6 +38,18 @@ enum AccountRole {
 }
 
 enum Category {
+  // income categories
+  SALARY
+  BONUS
+  FREELANCE
+  BUSINESS_REVENUE
+  RENTAL_INCOME
+  DIVIDENDS
+  INTEREST
+  REFUNDS
+  GIFTS_RECEIVED
+
+  // expense categories
   HOUSING
   ELECTRICITY
   WATER
