@@ -79,6 +79,117 @@ export const createTransaction = async (
   }
 };
 
+//create many transactions
+export const createManyTransactions = async (
+  req: Request<{}, {}, CreateTransactionBody[] | { transactions: CreateTransactionBody[] }>,
+  res: Response,
+) => {
+  try {
+    if (!req.payload) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const userId = req.payload.userId;
+
+    const transactionsInput = Array.isArray(req.body)
+      ? req.body
+      : req.body?.transactions;
+
+    if (!Array.isArray(transactionsInput) || transactionsInput.length === 0) {
+      return res.status(400).json({
+        message: "Provide at least one transaction.",
+      });
+    }
+
+    const accountIds = new Set<string>();
+    const rows: Prisma.TransactionCreateManyInput[] = [];
+
+    for (const item of transactionsInput) {
+      const { title, amount, type, category, notes, date, accountId } = item;
+
+      if (!title || amount === undefined || !type || !category || !accountId) {
+        return res.status(400).json({
+          message:
+            "Each transaction must include title, amount, type, category and accountId.",
+        });
+      }
+
+      if (!Object.values(TransactionType).includes(type)) {
+        return res.status(400).json({ message: "Invalid transaction type" });
+      }
+
+      if (!Object.values(Category).includes(category)) {
+        return res.status(400).json({ message: "Invalid category" });
+      }
+
+      let parsedDate: Date | undefined;
+      if (date) {
+        parsedDate = new Date(date);
+        if (Number.isNaN(parsedDate.getTime())) {
+          return res.status(400).json({ message: "Invalid transaction date" });
+        }
+      }
+
+      accountIds.add(accountId);
+      rows.push({
+        title,
+        amount: new Prisma.Decimal(amount),
+        type,
+        category,
+        accountId,
+        createdById: userId,
+        ...(notes !== undefined && { notes }),
+        ...(parsedDate && { date: parsedDate }),
+      });
+    }
+
+    if (accountIds.size !== 1) {
+      return res.status(400).json({
+        message: "Bulk create must target a single account.",
+      });
+    }
+
+    const singleAccountId = rows[0]?.accountId;
+    if (!singleAccountId) {
+      return res.status(400).json({
+        message: "Bulk create must include a valid accountId.",
+      });
+    }
+
+    const accountUser = await prisma.accountUser.findUnique({
+      where: {
+        userId_accountId: { userId, accountId: singleAccountId },
+      },
+    });
+
+    if (!accountUser) {
+      return res.status(403).json({ message: "Access denied to this account" });
+    }
+
+    const result = await prisma.transaction.createMany({
+      data: rows,
+    });
+
+    await logAudit({
+      action: "CREATE",
+      entityType: "TransactionBulk",
+      entityId: `bulk-${Date.now()}`,
+      performedById: userId,
+      accountId: singleAccountId,
+      newData: toAuditJson({
+        count: result.count,
+      }),
+    });
+
+    return res.status(201).json({
+      count: result.count,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error creating transaction" });
+  }
+};
+
 //get all transactions per account
 export const getTransactions = async (req: Request, res: Response) => {
   try {
@@ -103,7 +214,7 @@ export const getTransactions = async (req: Request, res: Response) => {
       where: { accountId },
       orderBy: { date: "desc" },
     });
-    
+
     return res.json(transactions);
   } catch (error) {
     console.error(error);

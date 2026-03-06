@@ -8,13 +8,17 @@ import {
   getAccountSummary,
   getCategoryAnalytics,
   getDashboardData,
+  createManyTransactions,
 } from "../controller/transaction.controller.js";
 
 import { isAuthenticated } from "../middlewares/jwt.middleware.js";
 
 const router = Router();
 
-// create transaction
+// create many transactions (bulk)
+router.post("/bulk", isAuthenticated, createManyTransactions);
+
+// create single transaction
 router.post("/", isAuthenticated, createTransaction);
 
 // get all transactions per account

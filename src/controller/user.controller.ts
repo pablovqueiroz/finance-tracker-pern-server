@@ -6,7 +6,7 @@ import { uploadImage } from "../services/cloudinaryService.js";
 import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
 import type { Prisma } from "../../generated/prisma/client.js";
-import { OAuth2Client } from "google-auth-library";
+import { OAuth2Client, type TokenPayload } from "google-auth-library";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -125,6 +125,7 @@ export const login = async (req: Request<{}, {}, LoginBody>, res: Response) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        image: user.image,
       },
     });
   } catch (error) {
@@ -286,6 +287,7 @@ export const updateUser = async (
 interface DeleteUserBody {
   password?: string;
   googleIdToken?: string;
+  idToken?: string;
 }
 
 export const deleteUser = async (
@@ -299,7 +301,8 @@ export const deleteUser = async (
       });
     }
     const userId = req.payload!.userId;
-    const { password, googleIdToken } = req.body ?? {};
+    const { password, googleIdToken, idToken } = req.body ?? {};
+    const googleToken = googleIdToken ?? idToken;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -309,8 +312,8 @@ export const deleteUser = async (
       return res.status(404).json({ message: "User not found." });
     }
 
-    // LOCAL users must confirm with password
-    if (user.provider === "LOCAL") {
+    // LOCAL-only users must confirm with password
+    if (user.provider === "LOCAL" && !user.googleId) {
       if (!password) {
         return res.status(400).json({
           message: "Password is required to delete account",
@@ -332,7 +335,7 @@ export const deleteUser = async (
 
     // Users linked to Google must perform a fresh Google reauthentication for account deletion.
     if (user.googleId) {
-      if (!googleIdToken) {
+      if (!googleToken) {
         return res.status(400).json({
           message: "Google reauthentication is required to delete account.",
         });
@@ -343,11 +346,17 @@ export const deleteUser = async (
         return res.status(500).json({ message: "Google auth not configured." });
       }
 
-      const ticket = await googleClient.verifyIdToken({
-        idToken: googleIdToken,
-        audience: googleClientId,
-      });
-      const googlePayload = ticket.getPayload();
+      let googlePayload: TokenPayload | undefined;
+      try {
+        const ticket = await googleClient.verifyIdToken({
+          idToken: googleToken,
+          audience: googleClientId,
+        });
+        googlePayload = ticket.getPayload();
+      } catch (googleError) {
+        console.error(googleError);
+        return res.status(401).json({ message: "Invalid Google token." });
+      }
 
       if (!googlePayload) {
         return res.status(401).json({ message: "Invalid Google token." });
@@ -380,10 +389,44 @@ export const deleteUser = async (
       await cloudinary.uploader.destroy(user.imagePublicId);
     }
 
-    await prisma.user.delete({
-      where: {
-        id: userId,
-      },
+    await prisma.$transaction(async (tx) => {
+      // Break/clear optional relations first
+      await tx.transaction.updateMany({
+        where: { updatedById: userId },
+        data: { updatedById: null },
+      });
+
+      await tx.savingGoal.updateMany({
+        where: { updatedById: userId },
+        data: { updatedById: null },
+      });
+
+      // Remove rows that require the user as a mandatory FK
+      await tx.transaction.deleteMany({
+        where: { createdById: userId },
+      });
+
+      await tx.savingGoal.deleteMany({
+        where: { createdById: userId },
+      });
+
+      await tx.auditLog.deleteMany({
+        where: { performedById: userId },
+      });
+
+      await tx.accountInvite.deleteMany({
+        where: { invitedById: userId },
+      });
+
+      await tx.accountUser.deleteMany({
+        where: { userId },
+      });
+
+      await tx.user.delete({
+        where: {
+          id: userId,
+        },
+      });
     });
 
     return res.status(200).json({
@@ -391,19 +434,6 @@ export const deleteUser = async (
     });
   } catch (error) {
     console.error(error);
-
-    if (
-      error instanceof Error &&
-      (error.message.includes("Token used too late") ||
-        error.message.includes("Wrong number of segments") ||
-        error.message.includes("Invalid token signature") ||
-        error.message.includes("No pem found") ||
-        error.message.includes("audience") ||
-        error.message.includes("Invalid token"))
-    ) {
-      return res.status(401).json({ message: "Invalid Google token." });
-    }
-
     return res.status(500).json({
       message: "Error deleting user.",
     });
@@ -509,6 +539,7 @@ export const googleLogin = async (
         id: user.id,
         name: user.name,
         email: user.email,
+        image: user.image,
       },
     });
   } catch (error: unknown) {
