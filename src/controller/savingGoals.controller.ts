@@ -1,6 +1,10 @@
 import type { Request, Response } from "express";
 import { prisma } from "../../lib/prisma.js";
-import { Prisma } from "../../generated/prisma/client.js";
+import {
+  Category,
+  Prisma,
+  TransactionType,
+} from "../../generated/prisma/client.js";
 import { logAudit, toAuditJson } from "../utils/auditLog.js";
 
 //create a saving goals
@@ -194,6 +198,26 @@ export const moveMoneyOnSavingGoal = async (
       });
     }
 
+    const accountTransactions = await prisma.transaction.groupBy({
+      by: ["type"],
+      where: { accountId: savingGoal.accountId },
+      _sum: { amount: true },
+    });
+
+    let accountIncome = 0;
+    let accountExpense = 0;
+
+    accountTransactions.forEach((item) => {
+      const value = Number(item._sum.amount ?? 0);
+      if (item.type === TransactionType.INCOME) {
+        accountIncome = value;
+      } else if (item.type === TransactionType.EXPENSE) {
+        accountExpense = value;
+      }
+    });
+
+    const accountBalance = accountIncome - accountExpense;
+
     if (type === "ADD") {
       const newAmount = savingGoal.currentAmount.add(amount);
       if (newAmount.gt(savingGoal.targetAmount)) {
@@ -201,15 +225,46 @@ export const moveMoneyOnSavingGoal = async (
           message: "Target amount exceeded.",
         });
       }
+
+      if (accountBalance < amount) {
+        return res.status(400).json({
+          message: "Insufficient account balance.",
+        });
+      }
     }
 
-    const updatedGoal = await prisma.savingGoal.update({
-      where: { id },
-      data: {
-        currentAmount:
-          type === "ADD" ? { increment: amount } : { decrement: amount },
-        updatedById: userId,
-      },
+    const updatedGoal = await prisma.$transaction(async (tx) => {
+      const goal = await tx.savingGoal.update({
+        where: { id },
+        data: {
+          currentAmount:
+            type === "ADD" ? { increment: amount } : { decrement: amount },
+          updatedById: userId,
+        },
+      });
+
+      await tx.transaction.create({
+        data: {
+          title:
+            type === "ADD"
+              ? `Transfer to saving goal: ${savingGoal.title}`
+              : `Transfer from saving goal: ${savingGoal.title}`,
+          amount: new Prisma.Decimal(amount),
+          type:
+            type === "ADD"
+              ? TransactionType.EXPENSE
+              : TransactionType.INCOME,
+          category: Category.OTHERS,
+          notes:
+            type === "ADD"
+              ? "Debit from account to saving goal"
+              : "Credit from saving goal to account",
+          accountId: savingGoal.accountId,
+          createdById: userId,
+        },
+      });
+
+      return goal;
     });
 
     await logAudit({
