@@ -5,15 +5,33 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-
-const FRONTEND_URL = process.env.ORIGIN || "http://localhost:5173";
+import { getAllowedOrigins, nodeEnv } from "../src/utils/env.js";
 
 export default function config(app: Application): void {
+  const allowedOrigins = getAllowedOrigins();
+
   app.set("trust proxy", 1);
   app.use(helmet());
+
+  if (nodeEnv === "production" && allowedOrigins.length === 0) {
+    console.warn(
+      "CORS is running without configured browser origins. Set ORIGIN to allow frontend requests.",
+    );
+  }
+
   app.use(
     cors({
-      origin: FRONTEND_URL,
+      origin(origin, callback) {
+        if (!origin) {
+          return callback(null, true);
+        }
+
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+
+        return callback(new Error("Not allowed by CORS"));
+      },
       credentials: true,
     }),
   );
@@ -28,7 +46,7 @@ export default function config(app: Application): void {
 
   app.use("/api/auth", authLimiter);
 
-  app.use(logger("dev"));
+  app.use(logger(nodeEnv === "production" ? "combined" : "dev"));
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));

@@ -1,33 +1,48 @@
 # Finance Tracker PERN Server
 
-Backend API for the Finance Tracker project, built with Node.js, Express, TypeScript, and Prisma (PostgreSQL).
+## Project Description
 
-## Stack
+Finance Tracker PERN Server is the backend API for a collaborative personal finance application. It provides authentication, account and member management, transaction tracking, saving goals, invitations, and audit logs for a PostgreSQL-based finance platform.
 
-- Node.js + Express 5
+## Live Demo
+
+A live version of the project can be accessed here: [Live Demo](LIVE_DEMO_LINK_HERE)
+
+## Features
+
+- Email/password authentication with JWT
+- Google OAuth sign-in support
+- User profile management with optional avatar upload
+- Multi-account finance management
+- Account member roles and access control
+- Transaction management for income and expenses
+- Saving goals and balance movement flows
+- Invitation workflow for account collaboration
+- Audit logs for key account actions
+- Security middleware with Helmet, CORS, and rate limiting
+
+## Tech Stack
+
+- Node.js
+- Express 5
 - TypeScript
 - Prisma ORM
 - PostgreSQL
-- JWT (authentication)
-- Cloudinary (avatar upload)
-- Google OAuth (idToken flow)
-
-## Requirements
-
-- Node.js 20+
-- PostgreSQL
-- Cloudinary account (optional, if you use image upload)
-- Google OAuth Client ID (for Google login)
+- JWT
+- Cloudinary
+- Vitest
+- Supertest
 
 ## Installation
 
+1. Clone the repository:
+
 ```bash
-npm install
+git clone https://github.com/pablovqueiroz/finance-tracker-pern-server.git
+cd finance-tracker-pern-server
 ```
 
-## Environment Variables
-
-Create your `.env` from the template:
+2. Create your environment file:
 
 ```bash
 cp .env.example .env
@@ -39,232 +54,104 @@ PowerShell:
 Copy-Item .env.example .env
 ```
 
-Then update values in `.env`.
+3. Update the `.env` file with your local configuration.
 
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
-TOKEN_SECRET="your_jwt_secret"
-PORT=5005
-ORIGIN="http://localhost:5173"
+4. Install dependencies:
 
-CLOUDINARY_CLOUD_NAME="..."
-CLOUDINARY_API_KEY="..."
-CLOUDINARY_API_SECRET="..."
-
-GOOGLE_CLIENT_ID="your_google_client_id.apps.googleusercontent.com"
+```bash
+npm install
 ```
 
-## Prisma
+## Environment Variables
+
+The project uses environment variables for database access, authentication, CORS, and optional integrations. Start from `.env.example` and provide values for the variables below.
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | PostgreSQL connection string used by Prisma |
+| `TOKEN_SECRET` | Yes | Secret used to sign JWT tokens |
+| `ORIGIN` | Yes | Frontend URL allowed by CORS. Comma-separated values are supported |
+| `GOOGLE_CLIENT_ID` | No | Required only if Google login is enabled |
+| `CLOUDINARY_CLOUD_NAME` | No | Required only if avatar upload is enabled |
+| `CLOUDINARY_API_KEY` | No | Required only if avatar upload is enabled |
+| `CLOUDINARY_API_SECRET` | No | Required only if avatar upload is enabled |
+| `PORT` | No | Server port. Defaults to `5000` locally |
+| `NODE_ENV` | No | Runtime environment. Defaults to `development` |
+
+Do not commit `.env` files or real credentials to version control.
+
+## Running the Project
+
+Run Prisma migrations in development:
 
 ```bash
 npx prisma migrate dev
-npx prisma generate
 ```
 
-Latest migration added in this update:
+Start the development server:
 
-- `20260304152350_add_income_categories` (extends `Category` enum for income transactions)
-
-## Scripts
-
-- `npm run dev`: run the server in development mode with watch (`tsx`)
-- `npm run test`: run tests with Vitest
-- `npm run test:watch`: run Vitest in watch mode
-- `npm run build`: compile TypeScript
-- `npm run start`: run the compiled build (`dist/server.js`)
-
-## Base URL
-
-`http://localhost:5005/api`
-
-## Authentication
-
-Protected routes require this header:
-
-```http
-Authorization: Bearer <token>
+```bash
+npm run dev
 ```
 
-## Security
+Build the project:
 
-- `helmet` is enabled globally.
-- Rate limit is enabled for `/api/auth` to reduce brute-force attempts.
-
-## Auth Behavior (Local + Google)
-
-- A user account is unique by email.
-- Google login links `googleId` to the same existing account (by email) when applicable.
-- Local login remains allowed if `password` exists, even if Google is linked.
-- Accounts created only with Google (`password = null`) cannot log in with email/password.
-
-## Routes
-
-### Auth (`/auth`)
-
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/google`
-
-Google login body example:
-
-```json
-{
-  "idToken": "<google_id_token>"
-}
+```bash
+npm run build
 ```
 
-### Users (`/users`)
+Start the production build locally:
 
-- `GET /users/me`
-- `PUT /users/me`
-- `DELETE /users/me`
+```bash
+npm start
+```
 
-### Accounts (`/accounts`)
-
-- `GET /accounts`
-- `GET /accounts/:accountId`
-- `POST /accounts`
-- `PUT /accounts/:accountId`
-- `DELETE /accounts/:accountId`
-
-### Account Members (`/accounts/:accountId/members`)
-
-- `GET /`
-- `PATCH /:memberId`
-- `DELETE /:memberId`
-
-### Transactions (`/transactions`)
-
-- `POST /transactions`
-- `GET /transactions/account/:accountId`
-- `GET /transactions/summary/:accountId`
-- `GET /transactions/analytics/:accountId`
-- `GET /transactions/dashboard/:accountId`
-- `GET /transactions/:id`
-- `PUT /transactions/:id`
-- `DELETE /transactions/:id`
-
-#### Transaction Categories
-
-`Category` now supports both expense and income categories.
-
-Income categories:
-
-- `SALARY`
-- `BONUS`
-- `FREELANCE`
-- `BUSINESS_REVENUE`
-- `RENTAL_INCOME`
-- `DIVIDENDS`
-- `INTEREST`
-- `REFUNDS`
-- `GIFTS_RECEIVED`
-- `OTHERS`
-
-Expense categories (existing):
-
-- `HOUSING`
-- `ELECTRICITY`
-- `WATER`
-- `GAS`
-- `HOME_INTERNET`
-- `MOBILE_PHONE`
-- `GROCERIES`
-- `RESTAURANTS_DELIVERY`
-- `TRANSPORT_FUEL`
-- `HEALTH_PHARMACY`
-- `LEISURE_HOBBIES`
-- `SUBSCRIPTIONS_STREAMING`
-- `SHOPPING`
-- `EDUCATION`
-- `PERSONAL_CARE`
-- `INVESTMENTS`
-- `DEBT_INSTALLMENTS`
-- `OTHERS`
-
-### Saving Goals (`/saving-goals`)
-
-- `GET /saving-goals/account/:accountId`
-- `GET /saving-goals/:id`
-- `POST /saving-goals`
-- `POST /saving-goals/:id/move-money`
-- `PUT /saving-goals/:id`
-- `DELETE /saving-goals/:id`
-
-### Invites (`/invites`)
-
-- `GET /invites/received`
-- `GET /invites/sent`
-- `GET /invites/expired`
-- `POST /invites`
-- `POST /invites/:token/accept`
-- `POST /invites/:token/reject`
-- `PATCH /invites/:inviteId/expire`
-- `POST /invites/:inviteId`
-- `PATCH /invites/:inviteId/cancel`
-- `DELETE /invites/:inviteId`
-
-#### Invite Expiration Rule
-
-- Invites are created with a 7-day validity.
-- `PENDING` invites with `expiresAt` in the past are marked as `EXPIRED`.
-- Invites can also be expired manually by the user who sent them.
-- Re-sending invite for the same `email + accountId` is supported when the previous invite is no longer `PENDING`.
-
-### Audit Logs
-
-- `GET /accounts/:accountId/audit-logs`
-- `GET /accounts/:accountId/audit-logs/:id`
-
-#### Audit Log Coverage
-
-Audit entries are created automatically for:
-
-- Transactions: `CREATE`, `UPDATE`, `DELETE`
-- Accounts: `CREATE`, `UPDATE`, `DELETE`
-- Account Members: `UPDATE` (role), `DELETE`
-- Saving Goals: `CREATE`, `UPDATE`, `DELETE`
-- Invites: `CREATE`, `UPDATE` (accept/reject/expire/cancel/resend)
-
-## Security Note
-
-- Never commit `.env` to version control.
-- Commit only `.env.example` with placeholder values.
-- Rotate secrets immediately if any real values were exposed.
-
-## Cloudinary Uploads
-
-- Uploaded profile images are stored in the `finance-tracker` folder.
-
-## Testing
-
-Run:
+Run tests:
 
 ```bash
 npm run test
 ```
 
-Current automated coverage includes basic auth integration checks (`src/tests/auth.test.ts`).
+## Deployment
 
-## Folder Structure
+This project is prepared for deployment as a Render Web Service.
+
+Recommended Render configuration:
+
+- Build Command: `npm install`
+- Start Command: `npm start`
+
+Deployment notes:
+
+- Render provides the `PORT` variable automatically.
+- `npm start` runs `prisma migrate deploy` before starting the server.
+- Set `DATABASE_URL` to your remote PostgreSQL instance.
+- Set `ORIGIN` to the deployed frontend URL so browser requests are accepted by CORS.
+- Add `GOOGLE_CLIENT_ID` and Cloudinary variables only if those features are enabled in production.
+
+## Project Structure
 
 ```txt
 src/
-  controller/
-  middlewares/
-  routes/
-  services/
-  types/
-  utils/
-  app.ts
-  server.ts
+  controller/    # Route handlers
+  middlewares/   # Authentication, authorization, uploads, errors
+  routes/        # API route definitions
+  services/      # Business and integration services
+  tests/         # Automated tests
+  types/         # Shared TypeScript types
+  utils/         # Utility helpers and env bootstrap
+  app.ts         # Express app configuration
+  server.ts      # Server startup entry point
 prisma/
-  schema.prisma
-  migrations/
-config/
-lib/
+  migrations/    # Database migrations
+  schema.prisma  # Prisma schema
+config/          # Application and service configuration
+lib/             # Prisma client setup
 ```
 
-## Related Repository
+## Future Improvements
 
-- Frontend (cliente): https://github.com/pablovqueiroz/finance-tracker-pern-client
+- Expand automated test coverage across business-critical routes
+- Add API documentation with OpenAPI or Swagger
+- Introduce CI/CD checks for build, test, and deployment validation
+- Add health check and monitoring endpoints for production environments

@@ -2,12 +2,13 @@
   "name": "finance-tracker-pern-server",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/src/server.js",
   "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "build": "tsc",
-    "start": "node dist/server.js",
+    "test": "vitest run --pool=threads --dir src/tests",
+    "test:watch": "vitest --pool=threads --dir src/tests",
+    "build": "prisma generate && tsc",
+    "postinstall": "npm run build",
+    "start": "prisma migrate deploy && node dist/src/server.js",
     "dev": "tsx watch src/server.ts"
   },
   "repository": {
@@ -22,6 +23,9 @@
     "url": "https://github.com/pablovqueiroz/finance-tracker-pern-server/issues"
   },
   "homepage": "https://github.com/pablovqueiroz/finance-tracker-pern-server#readme",
+  "engines": {
+    "node": ">=20 <23"
+  },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
@@ -32,7 +36,6 @@
     "@types/pg": "^8.16.0",
     "@types/supertest": "^6.0.3",
     "nodemon": "^3.1.11",
-    "prisma": "^7.4.0",
     "supertest": "^7.2.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
@@ -57,6 +60,7 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "pg": "^8.18.0",
+    "prisma": "^7.4.0",
     "ts-node-dev": "^2.0.0"
   },
   "directories": {

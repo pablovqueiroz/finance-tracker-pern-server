@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import "./utils/env.js";
 import express from "express";
 import config from "../config/index.js";
 import authRoutes from "./routes/auth.routes.js";
@@ -9,8 +9,6 @@ import savingGoalsRoutes from "./routes/savingGoals.routes.js";
 import inviteRoutes from "./routes/invite.routes.js";
 import auditLogRoutes from "./routes/auditLog.routes.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
-
-dotenv.config();
 
 const app = express();
 
