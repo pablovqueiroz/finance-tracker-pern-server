@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/pablovqueiroz/finance-tracker-pern-server#readme",
   "engines": {
-    "node": ">=20 <23"
+    "node": "^20.19 || ^22.12 || ^24.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
@@ -42,8 +42,8 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.4.0",
-    "@prisma/client": "^7.4.0",
+    "@prisma/adapter-pg": "7.5.0",
+    "@prisma/client": "7.5.0",
     "@types/bcrypt": "^6.0.0",
     "@types/multer": "^2.0.0",
     "bcrypt": "^6.0.0",
@@ -60,8 +60,16 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "pg": "^8.18.0",
-    "prisma": "^7.4.0",
+    "prisma": "7.5.0",
     "ts-node-dev": "^2.0.0"
+  },
+  "overrides": {
+    "@prisma/dev": {
+      "@hono/node-server": "1.19.11",
+      "@mrleebo/prisma-ast": "0.14.0",
+      "hono": "4.12.7"
+    },
+    "lodash": "4.17.23"
   },
   "directories": {
     "lib": "lib"
