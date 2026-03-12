@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 import { prisma } from "../../lib/prisma.js";
 import crypto from "crypto";
 import { logAudit, toAuditJson } from "../utils/auditLog.js";
+import { AccountRole } from "../../generated/prisma/client.js";
+import { isAdminOrOwner } from "../utils/permisions.js";
 
 
 //expired invites
@@ -28,6 +30,12 @@ export const sendInvite = async (req: Request, res: Response) => {
 
     const { email, accountId, role } = req.body;
     const userId = req.payload.userId;
+    const normalizedRole =
+      typeof role === "string" ? (role.toUpperCase() as AccountRole) : undefined;
+
+    if (!normalizedRole || !Object.values(AccountRole).includes(normalizedRole)) {
+      return res.status(400).json({ message: "Invalid role." });
+    }
 
     const membership = await prisma.accountUser.findUnique({
       where: {
@@ -40,6 +48,18 @@ export const sendInvite = async (req: Request, res: Response) => {
 
     if (!membership) {
       return res.status(403).json({ message: "Not allowed." });
+    }
+
+    if (!isAdminOrOwner(membership.role)) {
+      return res.status(403).json({
+        message: "Only admins or owners can send invites.",
+      });
+    }
+
+    if (normalizedRole === "OWNER" && membership.role !== "OWNER") {
+      return res.status(403).json({
+        message: "Only owners can invite another owner.",
+      });
     }
 
     const invitedUser = await prisma.user.findUnique({
@@ -74,7 +94,11 @@ export const sendInvite = async (req: Request, res: Response) => {
       },
     });
 
-    if (existingInvite && existingInvite.status === "PENDING" && existingInvite.expiresAt > new Date()) {
+    if (
+      existingInvite &&
+      existingInvite.status === "PENDING" &&
+      existingInvite.expiresAt > new Date()
+    ) {
       return res.status(400).json({ message: "Invite already exists." });
     }
 
@@ -84,7 +108,7 @@ export const sendInvite = async (req: Request, res: Response) => {
       invite = await prisma.accountInvite.update({
         where: { id: existingInvite.id },
         data: {
-          role,
+          role: normalizedRole,
           token,
           invitedById: userId,
           status: "PENDING",
@@ -106,7 +130,7 @@ export const sendInvite = async (req: Request, res: Response) => {
         data: {
           email,
           accountId,
-          role,
+          role: normalizedRole,
           token,
           invitedById: userId,
           expiresAt,

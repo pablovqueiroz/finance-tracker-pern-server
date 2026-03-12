@@ -1,25 +1,16 @@
-# Finance Tracker PERN Server
+# Finance Tracker Server
 
-## Project Description
+Express + TypeScript backend for the Finance Tracker PERN application.
 
-Finance Tracker PERN Server is the backend API for a collaborative personal finance application. It provides authentication, account and member management, transaction tracking, saving goals, invitations, and audit logs for a PostgreSQL-based finance platform.
+## Overview
+
+This API handles authentication, user profiles, collaborative accounts, transactions, saving goals, invitations, audit logs, and media upload support for the finance tracker platform.
 
 ## Live Demo
 
-A live version of the project can be accessed here: [Live Demo](LIVE_DEMO_LINK_HERE)
+A live version of the API will be available here soon:
 
-## Features
-
-- Email/password authentication with JWT
-- Google OAuth sign-in support
-- User profile management with optional avatar upload
-- Multi-account finance management
-- Account member roles and access control
-- Transaction management for income and expenses
-- Saving goals and balance movement flows
-- Invitation workflow for account collaboration
-- Audit logs for key account actions
-- Security middleware with Helmet, CORS, and rate limiting
+- `SERVER_LIVE_DEMO_URL`
 
 ## Tech Stack
 
@@ -33,30 +24,84 @@ A live version of the project can be accessed here: [Live Demo](LIVE_DEMO_LINK_H
 - Vitest
 - Supertest
 
+## Features
+
+- JWT authentication for email/password login
+- Google OAuth login using an ID token flow
+- User profile endpoints with optional avatar upload
+- Multi-account architecture with owner, admin, and member roles
+- Transactions for income and expense tracking
+- Saving goals with deposit and withdrawal flows
+- Account invitations with pending, accepted, expired, and cancelled states
+- Audit logs for account-level changes
+- Security middleware with Helmet, CORS, rate limiting, and cookie parsing
+
+## API Base Path
+
+All routes are served under:
+
+```txt
+/api
+```
+
+Main route groups:
+
+- `/api/auth`
+- `/api/users`
+- `/api/accounts`
+- `/api/transactions`
+- `/api/saving-goals`
+- `/api/invites`
+- `/api/accounts/:accountId/audit-logs`
+
+## Project Structure
+
+```txt
+src/
+  controller/    route handlers
+  middlewares/   auth, account access, upload, and error handling
+  routes/        API route definitions
+  services/      external integrations such as Cloudinary
+  tests/         automated tests
+  types/         shared TypeScript declarations
+  utils/         env loading, permissions, audit helpers, filters
+  app.ts         Express app setup
+  server.ts      server bootstrap
+config/          middleware and service configuration
+lib/             Prisma client bootstrap
+prisma/
+  migrations/    database migrations
+  schema.prisma  database schema
+generated/
+  prisma/        generated Prisma client output
+```
+
+## Data Model Highlights
+
+The database schema includes:
+
+- Users with local or Google authentication
+- Accounts with per-user roles
+- Transactions with typed categories
+- Saving goals linked to accounts
+- Account invitations
+- Audit logs
+
+Supported account currencies:
+
+- `EUR`
+- `USD`
+- `BRL`
+- `GBP`
+- `JPY`
+
+## Prerequisites
+
+- Node.js `^20.19 || ^22.12 || ^24.0`
+- npm
+- PostgreSQL
+
 ## Installation
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/pablovqueiroz/finance-tracker-pern-server.git
-cd finance-tracker-pern-server
-```
-
-2. Create your environment file:
-
-```bash
-cp .env.example .env
-```
-
-PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-3. Update the `.env` file with your local configuration.
-
-4. Install dependencies:
 
 ```bash
 npm install
@@ -64,35 +109,68 @@ npm install
 
 ## Environment Variables
 
-The project uses environment variables for database access, authentication, CORS, and optional integrations. Start from `.env.example` and provide values for the variables below.
+Start from `.env.example` and create `.env`.
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `DATABASE_URL` | Yes | PostgreSQL connection string used by Prisma |
-| `TOKEN_SECRET` | Yes | Secret used to sign JWT tokens |
-| `ORIGIN` | Yes | Frontend URL allowed by CORS. Comma-separated values are supported |
-| `GOOGLE_CLIENT_ID` | No | Required only if Google login is enabled |
-| `CLOUDINARY_CLOUD_NAME` | No | Required only if avatar upload is enabled |
-| `CLOUDINARY_API_KEY` | No | Required only if avatar upload is enabled |
-| `CLOUDINARY_API_SECRET` | No | Required only if avatar upload is enabled |
-| `PORT` | No | Server port. Defaults to `5000` locally |
-| `NODE_ENV` | No | Runtime environment. Defaults to `development` |
+```env
+NODE_ENV=development
+PORT=5000
+ORIGIN=http://localhost:5173
+TOKEN_SECRET=your_jwt_secret
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public"
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+GOOGLE_CLIENT_ID=
+```
 
-Do not commit `.env` files or real credentials to version control.
+Variable notes:
 
-## Running the Project
+- `DATABASE_URL` is required.
+- `TOKEN_SECRET` is required.
+- `ORIGIN` accepts comma-separated frontend origins.
+- `GOOGLE_CLIENT_ID` is required only if Google login is enabled.
+- Cloudinary variables are required only if avatar upload is used.
+- In development, if `ORIGIN` is omitted, the server falls back to `http://localhost:5173`.
 
-Run Prisma migrations in development:
+## Database Setup
+
+Generate the Prisma client and apply local migrations:
 
 ```bash
 npx prisma migrate dev
 ```
 
-Start the development server:
+If you only need to regenerate the client:
+
+```bash
+npx prisma generate
+```
+
+## Available Scripts
+
+```bash
+npm run dev
+npm run build
+npm start
+npm run test
+npm run test:watch
+```
+
+## Local Development
+
+Start the API in watch mode:
 
 ```bash
 npm run dev
 ```
+
+Default local port:
+
+- `http://localhost:5000`
+
+The server logs the active environment and allowed origins on startup.
+
+## Production
 
 Build the project:
 
@@ -100,58 +178,32 @@ Build the project:
 npm run build
 ```
 
-Start the production build locally:
+Start the compiled server:
 
 ```bash
 npm start
 ```
 
-Run tests:
+`npm start` runs `prisma migrate deploy` before launching `dist/src/server.js`.
+
+## Testing
+
+Run the test suite:
 
 ```bash
 npm run test
 ```
 
-## Deployment
+Current automated coverage includes API authentication tests under `src/tests`.
 
-This project is prepared for deployment as a Render Web Service.
+## Deployment Notes
 
-Recommended Render configuration:
+The server is structured for platforms such as Render or any Node.js host with PostgreSQL access.
 
-- Build Command: `npm install`
-- Start Command: `npm start`
+Production checklist:
 
-Deployment notes:
-
-- Render provides the `PORT` variable automatically.
-- `npm start` runs `prisma migrate deploy` before starting the server.
-- Set `DATABASE_URL` to your remote PostgreSQL instance.
-- Set `ORIGIN` to the deployed frontend URL so browser requests are accepted by CORS.
-- Add `GOOGLE_CLIENT_ID` and Cloudinary variables only if those features are enabled in production.
-
-## Project Structure
-
-```txt
-src/
-  controller/    # Route handlers
-  middlewares/   # Authentication, authorization, uploads, errors
-  routes/        # API route definitions
-  services/      # Business and integration services
-  tests/         # Automated tests
-  types/         # Shared TypeScript types
-  utils/         # Utility helpers and env bootstrap
-  app.ts         # Express app configuration
-  server.ts      # Server startup entry point
-prisma/
-  migrations/    # Database migrations
-  schema.prisma  # Prisma schema
-config/          # Application and service configuration
-lib/             # Prisma client setup
-```
-
-## Future Improvements
-
-- Expand automated test coverage across business-critical routes
-- Add API documentation with OpenAPI or Swagger
-- Introduce CI/CD checks for build, test, and deployment validation
-- Add health check and monitoring endpoints for production environments
+- Set `DATABASE_URL` to the production database.
+- Set `TOKEN_SECRET` to a strong secret.
+- Set `ORIGIN` to the deployed frontend URL.
+- Provide `GOOGLE_CLIENT_ID` if Google login is enabled.
+- Provide Cloudinary credentials if avatar upload is enabled.
