@@ -288,6 +288,7 @@ interface DeleteUserBody {
   password?: string;
   googleIdToken?: string;
   idToken?: string;
+  accessToken?: string;
 }
 
 export const deleteUser = async (
@@ -301,7 +302,7 @@ export const deleteUser = async (
       });
     }
     const userId = req.payload!.userId;
-    const { password, googleIdToken, idToken } = req.body ?? {};
+    const { password, googleIdToken, idToken, accessToken } = req.body ?? {};
     const googleToken = googleIdToken ?? idToken;
 
     const user = await prisma.user.findUnique({
@@ -335,7 +336,7 @@ export const deleteUser = async (
 
     // Users linked to Google must perform a fresh Google reauthentication for account deletion.
     if (user.googleId) {
-      if (!googleToken) {
+      if (!googleToken && !accessToken) {
         return res.status(400).json({
           message: "Google reauthentication is required to delete account.",
         });
@@ -346,13 +347,17 @@ export const deleteUser = async (
         return res.status(500).json({ message: "Google auth not configured." });
       }
 
-      let googlePayload: TokenPayload | undefined;
+      let googlePayload: TokenPayload | GoogleProfile | null | undefined;
       try {
-        const ticket = await googleClient.verifyIdToken({
-          idToken: googleToken,
-          audience: googleClientId,
-        });
-        googlePayload = ticket.getPayload();
+        if (googleToken) {
+          const ticket = await googleClient.verifyIdToken({
+            idToken: googleToken,
+            audience: googleClientId,
+          });
+          googlePayload = ticket.getPayload();
+        } else if (accessToken) {
+          googlePayload = await getGoogleProfileFromAccessToken(accessToken);
+        }
       } catch (googleError) {
         console.error(googleError);
         return res.status(401).json({ message: "Invalid Google token." });
@@ -368,19 +373,20 @@ export const deleteUser = async (
         });
       }
 
-      // Require fresh sign-in (step-up): token must be issued very recently.
-      const tokenIssuedAt = googlePayload.iat;
-      const nowInSeconds = Math.floor(Date.now() / 1000);
-      const maxAgeInSeconds = 5 * 60;
+      if ("iat" in googlePayload) {
+        const tokenIssuedAt = googlePayload.iat;
+        const nowInSeconds = Math.floor(Date.now() / 1000);
+        const maxAgeInSeconds = 5 * 60;
 
-      if (
-        !tokenIssuedAt ||
-        nowInSeconds - tokenIssuedAt > maxAgeInSeconds ||
-        nowInSeconds < tokenIssuedAt
-      ) {
-        return res.status(401).json({
-          message: "Google reauthentication expired. Please try again.",
-        });
+        if (
+          !tokenIssuedAt ||
+          nowInSeconds - tokenIssuedAt > maxAgeInSeconds ||
+          nowInSeconds < tokenIssuedAt
+        ) {
+          return res.status(401).json({
+            message: "Google reauthentication expired. Please try again.",
+          });
+        }
       }
     }
 
@@ -442,30 +448,61 @@ export const deleteUser = async (
 
 //google login
 interface GoogleLoginBody {
-  idToken: string;
+  idToken?: string;
+  accessToken?: string;
 }
+
+type GoogleProfile = {
+  sub?: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+  email_verified?: boolean;
+};
+
+const getGoogleProfileFromAccessToken = async (
+  accessToken: string,
+): Promise<GoogleProfile | null> => {
+  const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return (await response.json()) as GoogleProfile;
+};
 
 export const googleLogin = async (
   req: Request<{}, {}, GoogleLoginBody>,
   res: Response,
 ) => {
   try {
-    const { idToken } = req.body;
+    const { idToken, accessToken } = req.body;
 
-    if (!idToken) {
-      return res.status(400).json({ message: "idToken is required." });
+    if (!idToken && !accessToken) {
+      return res.status(400).json({ message: "Google token is required." });
     }
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
     if (!googleClientId) {
       return res.status(500).json({ message: "Google auth not configured." });
     }
 
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: googleClientId,
-    });
+    let payload: GoogleProfile | TokenPayload | null | undefined;
 
-    const payload = ticket.getPayload();
+    if (idToken) {
+      const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: googleClientId,
+      });
+
+      payload = ticket.getPayload();
+    } else if (accessToken) {
+      payload = await getGoogleProfileFromAccessToken(accessToken);
+    }
 
     if (!payload) {
       return res.status(401).json({ message: "Invalid Google token." });
@@ -545,7 +582,6 @@ export const googleLogin = async (
   } catch (error: unknown) {
     console.error(error);
 
-    // Google token validation/auth errors
     if (
       error instanceof Error &&
       (error.message.includes("Token used too late") ||
@@ -558,7 +594,6 @@ export const googleLogin = async (
       return res.status(401).json({ message: "Invalid Google token." });
     }
 
-    // Internal/server errors
     return res.status(500).json({ message: "Error during Google login." });
   }
 };
