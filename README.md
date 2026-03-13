@@ -1,44 +1,145 @@
-# Finance Tracker Server
+# Budgetivo Backend
 
-Express + TypeScript backend for the Finance Tracker PERN application.
+Backend API for Budgetivo, a collaborative personal finance platform built around accounts, transactions, saving goals, invitations, and audit-aware user actions.
+
+## Related Repositories
+
+- Frontend: [https://github.com/pablovqueiroz/finance-tracker-pern-client](https://github.com/pablovqueiroz/finance-tracker-pern-client)
+- Backend: [https://github.com/pablovqueiroz/finance-tracker-pern-server](https://github.com/pablovqueiroz/finance-tracker-pern-server)
+- Live demo: [https://budgetivo.vercel.app/](https://budgetivo.vercel.app/)
 
 ## Overview
 
-This API handles authentication, user profiles, collaborative accounts, transactions, saving goals, invitations, audit logs, and media upload support for the finance tracker platform.
+This backend provides the API and business rules that power the full Budgetivo experience:
 
-## Live Demo
+- authentication with email/password and Google OAuth
+- user profile management
+- collaborative accounts with roles
+- transactions and summaries
+- saving goals and money movement flows
+- invitation lifecycle handling
+- audit-oriented account operations
+- avatar upload support
 
-A live version of the API will be available here soon:
+## Why This Project Matters
 
-- `SERVER_LIVE_DEMO_URL`
+This backend highlights practical backend engineering capabilities relevant to real product development:
 
-## Tech Stack
+- designing and maintaining a typed REST API for a complete business domain
+- handling authentication, permissions, and collaborative account logic
+- integrating external providers such as Google OAuth and Cloudinary
+- modeling financial workflows with transactions, goals, and reporting data
+- using Prisma and PostgreSQL for maintainable database access
+- applying production middleware for security and operational safety
+
+## Backend Stack
+
+### Core
 
 - Node.js
 - Express 5
 - TypeScript
-- Prisma ORM
+
+### Database and ORM
+
 - PostgreSQL
-- JWT
+- Prisma
+- `@prisma/client`
+- `@prisma/adapter-pg`
+- `pg`
+
+### Authentication and Security
+
+- JWT with `jsonwebtoken`
+- Google identity verification with `google-auth-library`
+- password hashing with `bcrypt` and `bcryptjs`
+- Helmet
+- CORS
+- `express-rate-limit`
+- `cookie-parser`
+- `dotenv`
+
+### Uploads and Media
+
+- Multer
 - Cloudinary
+
+### Logging and Developer Tooling
+
+- Morgan
+- TSX
+- TypeScript
 - Vitest
 - Supertest
 
+## Main Backend Libraries
+
+- `express`
+- `prisma`
+- `@prisma/client`
+- `@prisma/adapter-pg`
+- `pg`
+- `jsonwebtoken`
+- `google-auth-library`
+- `bcrypt`
+- `bcryptjs`
+- `helmet`
+- `cors`
+- `express-rate-limit`
+- `cookie-parser`
+- `dotenv`
+- `multer`
+- `cloudinary`
+- `morgan`
+- `vitest`
+- `supertest`
+- `tsx`
+
 ## Features
 
-- JWT authentication for email/password login
-- Google OAuth login using an ID token flow
-- User profile endpoints with optional avatar upload
-- Multi-account architecture with owner, admin, and member roles
-- Transactions for income and expense tracking
-- Saving goals with deposit and withdrawal flows
-- Account invitations with pending, accepted, expired, and cancelled states
-- Audit logs for account-level changes
-- Security middleware with Helmet, CORS, rate limiting, and cookie parsing
+### Authentication and User Management
+
+- email/password authentication
+- Google login with ID token validation
+- JWT-based protected routes
+- profile retrieval and update
+- avatar upload support
+
+### Accounts and Roles
+
+- collaborative accounts
+- roles: Owner, Admin, Viewer
+- account membership management
+- account-scoped permissions
+
+### Transactions and Saving Goals
+
+- income and expense transactions
+- transaction summaries and analytics
+- saving goal creation and updates
+- deposit and withdrawal tracking for goals
+- account balance and historical reporting support
+
+### Invitations and Auditing
+
+- invite creation and acceptance/rejection flow
+- pending, accepted, cancelled, and expired states
+- audit log support for account-level changes
+
+## Recruiter Notes
+
+If you are reviewing this backend from a hiring perspective, it demonstrates:
+
+- Express + TypeScript API design
+- Prisma/PostgreSQL data modeling
+- authentication and authorization flows
+- integration with Google OAuth and Cloudinary
+- API testing with Vitest and Supertest
+- security-minded middleware setup with Helmet, CORS, cookies, and rate limiting
 
 ## API Base Path
 
-All routes are served under:
+All API routes are served under:
 
 ```txt
 /api
@@ -59,16 +160,16 @@ Main route groups:
 ```txt
 src/
   controller/    route handlers
-  middlewares/   auth, account access, upload, and error handling
+  middlewares/   auth, access control, upload, and error handling
   routes/        API route definitions
-  services/      external integrations such as Cloudinary
-  tests/         automated tests
+  services/      integrations such as Cloudinary
+  tests/         automated API tests
   types/         shared TypeScript declarations
   utils/         env loading, permissions, audit helpers, filters
   app.ts         Express app setup
   server.ts      server bootstrap
 config/          middleware and service configuration
-lib/             Prisma client bootstrap
+lib/             Prisma bootstrap
 prisma/
   migrations/    database migrations
   schema.prisma  database schema
@@ -76,36 +177,26 @@ generated/
   prisma/        generated Prisma client output
 ```
 
-## Data Model Highlights
+## Main Libraries and Resources
 
-The database schema includes:
-
-- Users with local or Google authentication
-- Accounts with per-user roles
-- Transactions with typed categories
-- Saving goals linked to accounts
-- Account invitations
-- Audit logs
-
-Supported account currencies:
-
-- `EUR`
-- `USD`
-- `BRL`
-- `GBP`
-- `JPY`
-
-## Prerequisites
-
-- Node.js `^20.19 || ^22.12 || ^24.0`
-- npm
-- PostgreSQL
-
-## Installation
-
-```bash
-npm install
-```
+- `express`
+- `prisma`
+- `@prisma/client`
+- `@prisma/adapter-pg`
+- `pg`
+- `jsonwebtoken`
+- `google-auth-library`
+- `helmet`
+- `cors`
+- `express-rate-limit`
+- `cookie-parser`
+- `dotenv`
+- `multer`
+- `cloudinary`
+- `morgan`
+- `vitest`
+- `supertest`
+- `tsx`
 
 ## Environment Variables
 
@@ -123,32 +214,18 @@ CLOUDINARY_API_SECRET=
 GOOGLE_CLIENT_ID=
 ```
 
-Variable notes:
+### Notes
 
 - `DATABASE_URL` is required.
 - `TOKEN_SECRET` is required.
-- `ORIGIN` accepts comma-separated frontend origins.
-- `GOOGLE_CLIENT_ID` is required only if Google login is enabled.
-- Cloudinary variables are required only if avatar upload is used.
-- In development, if `ORIGIN` is omitted, the server falls back to `http://localhost:5173`.
+- `ORIGIN` can contain one or more frontend origins.
+- `GOOGLE_CLIENT_ID` is required when Google login is enabled.
+- Cloudinary credentials are required when avatar upload is enabled.
 
-## Database Setup
-
-Generate the Prisma client and apply local migrations:
+## Scripts
 
 ```bash
-npx prisma migrate dev
-```
-
-If you only need to regenerate the client:
-
-```bash
-npx prisma generate
-```
-
-## Available Scripts
-
-```bash
+npm install
 npm run dev
 npm run build
 npm start
@@ -158,52 +235,24 @@ npm run test:watch
 
 ## Local Development
 
-Start the API in watch mode:
-
-```bash
-npm run dev
-```
-
-Default local port:
+Default local API URL:
 
 - `http://localhost:5000`
 
-The server logs the active environment and allowed origins on startup.
+The backend is intended to work together with the frontend app available at:
 
-## Production
+- [https://budgetivo.vercel.app/](https://budgetivo.vercel.app/)
 
-Build the project:
+## Deployment
 
-```bash
-npm run build
-```
+Suggested backend hosting:
 
-Start the compiled server:
-
-```bash
-npm start
-```
-
-`npm start` runs `prisma migrate deploy` before launching `dist/src/server.js`.
-
-## Testing
-
-Run the test suite:
-
-```bash
-npm run test
-```
-
-Current automated coverage includes API authentication tests under `src/tests`.
-
-## Deployment Notes
-
-The server is structured for platforms such as Render or any Node.js host with PostgreSQL access.
+- Render or another Node.js host with PostgreSQL access
 
 Production checklist:
 
-- Set `DATABASE_URL` to the production database.
-- Set `TOKEN_SECRET` to a strong secret.
-- Set `ORIGIN` to the deployed frontend URL.
-- Provide `GOOGLE_CLIENT_ID` if Google login is enabled.
-- Provide Cloudinary credentials if avatar upload is enabled.
+- set `DATABASE_URL`
+- set a strong `TOKEN_SECRET`
+- set `ORIGIN` to the deployed frontend URL
+- set `GOOGLE_CLIENT_ID` if Google login is enabled
+- set Cloudinary credentials if avatar upload is enabled
