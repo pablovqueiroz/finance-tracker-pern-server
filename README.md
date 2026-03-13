@@ -8,6 +8,12 @@ Backend API for Budgetivo, a collaborative personal finance platform built aroun
 - Backend: [https://github.com/pablovqueiroz/finance-tracker-pern-server](https://github.com/pablovqueiroz/finance-tracker-pern-server)
 - Live demo: [https://budgetivo.vercel.app/](https://budgetivo.vercel.app/)
 
+## Live Demo
+
+### Try It Live
+
+[Open Budgetivo Live Demo](https://budgetivo.vercel.app/)
+
 ## Overview
 
 This backend provides the API and business rules that power the full Budgetivo experience:
