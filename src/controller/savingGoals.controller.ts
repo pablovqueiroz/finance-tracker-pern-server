@@ -6,6 +6,7 @@ import {
   TransactionType,
 } from "../../generated/prisma/client.js";
 import { logAudit, toAuditJson } from "../utils/auditLog.js";
+import { isAdminOrOwner } from "../utils/permisions.js";
 
 //create a saving goals
 interface createSavingGoalBody {
@@ -54,6 +55,10 @@ export const createSavingGoal = async (
 
     if (!membership) {
       return res.status(403).json({ message: "Access denied." });
+    }
+
+    if (!isAdminOrOwner(membership.role)) {
+      return res.status(403).json({ message: "Insufficient permissions." });
     }
     const savingGoal = await prisma.savingGoal.create({ data });
 
@@ -192,6 +197,23 @@ export const moveMoneyOnSavingGoal = async (
       });
     }
 
+    const membership = await prisma.accountUser.findUnique({
+      where: {
+        userId_accountId: {
+          userId,
+          accountId: savingGoal.accountId,
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(403).json({ message: "Access denied." });
+    }
+
+    if (!isAdminOrOwner(membership.role)) {
+      return res.status(403).json({ message: "Insufficient permissions." });
+    }
+
     if (type === "REMOVE" && savingGoal.currentAmount.lt(amount)) {
       return res.status(400).json({
         message: "Insufficient funds.",
@@ -327,6 +349,10 @@ export const updateSavingGoal = async (
       return res.status(403).json({ message: "Access denied" });
     }
 
+    if (!isAdminOrOwner(accountUser.role)) {
+      return res.status(403).json({ message: "Insufficient permissions" });
+    }
+
     const { title, targetAmount, deadline, notes } = req.body;
 
     const data: Prisma.SavingGoalUpdateInput = {
@@ -400,6 +426,10 @@ export const deleteSavingGoal = async (
 
     if (!accountUser) {
       return res.status(403).json({ message: "Access denied" });
+    }
+
+    if (!isAdminOrOwner(accountUser.role)) {
+      return res.status(403).json({ message: "Insufficient permissions" });
     }
 
     await prisma.savingGoal.delete({

@@ -50,6 +50,10 @@ export const createTransaction = async (
       return res.status(403).json({ message: "Access denied to this account" });
     }
 
+    if (!isAdminOrOwner(accountUser.role)) {
+      return res.status(403).json({ message: "Insufficient permissions" });
+    }
+
     const transaction = await prisma.transaction.create({
       data: {
         title,
@@ -164,6 +168,10 @@ export const createManyTransactions = async (
 
     if (!accountUser) {
       return res.status(403).json({ message: "Access denied to this account" });
+    }
+
+    if (!isAdminOrOwner(accountUser.role)) {
+      return res.status(403).json({ message: "Insufficient permissions" });
     }
 
     const result = await prisma.transaction.createMany({

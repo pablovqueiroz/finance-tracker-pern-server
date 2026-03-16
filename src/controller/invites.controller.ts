@@ -356,7 +356,20 @@ export const expireInvite = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Invite not found." });
     }
 
-    if (invite.invitedById !== userId) {
+    const membership = await prisma.accountUser.findUnique({
+      where: {
+        userId_accountId: {
+          userId,
+          accountId: invite.accountId,
+        },
+      },
+    });
+
+    if (
+      invite.invitedById !== userId ||
+      !membership ||
+      !isAdminOrOwner(membership.role)
+    ) {
       return res.status(403).json({ message: "Not allowed." });
     }
 
@@ -442,7 +455,24 @@ export const cancelInvite = async (req: Request, res: Response) => {
       where: { id: inviteId },
     });
 
-    if (!invite || invite.invitedById !== userId) {
+    if (!invite) {
+      return res.status(403).json({ message: "Not allowed." });
+    }
+
+    const membership = await prisma.accountUser.findUnique({
+      where: {
+        userId_accountId: {
+          userId,
+          accountId: invite.accountId,
+        },
+      },
+    });
+
+    if (
+      invite.invitedById !== userId ||
+      !membership ||
+      !isAdminOrOwner(membership.role)
+    ) {
       return res.status(403).json({ message: "Not allowed." });
     }
 
