@@ -130,6 +130,8 @@ This backend highlights practical backend engineering capabilities relevant to r
 
 - invite creation and acceptance/rejection flow
 - pending, accepted, cancelled, and expired states
+- invite delivery remains manual on the frontend through user-owned share targets such as email, SMS, WhatsApp, or native share
+- backend invite endpoints continue to create and manage invite records without sending emails directly
 - audit log support for account-level changes
 
 ## Recruiter Notes
@@ -262,3 +264,4 @@ Production checklist:
 - set `ORIGIN` to the deployed frontend URL
 - set `GOOGLE_CLIENT_ID` if Google login is enabled
 - set Cloudinary credentials if avatar upload is enabled
+
