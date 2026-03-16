@@ -1,4 +1,8 @@
-# Budgetivo Backend
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/pablovqueiroz/finance-tracker-pern-client/main/public/budgetivo.png" alt="Budgetivo" width="72" />
+  <br />
+  Budgetivo Backend
+</h1>
 
 Backend API for Budgetivo, a collaborative personal finance platform built around accounts, transactions, saving goals, invitations, and audit-aware user actions.
 
@@ -264,4 +268,5 @@ Production checklist:
 - set `ORIGIN` to the deployed frontend URL
 - set `GOOGLE_CLIENT_ID` if Google login is enabled
 - set Cloudinary credentials if avatar upload is enabled
+
 
