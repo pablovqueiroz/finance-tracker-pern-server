@@ -10,6 +10,19 @@ import { OAuth2Client, type TokenPayload } from "google-auth-library";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const normalizeEmail = (email?: string) => email?.trim().toLowerCase();
+
+const authUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  gender: true,
+  image: true,
+  provider: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.UserSelect;
+
 //create a user
 interface CreateUserBody {
   name: string;
@@ -25,7 +38,10 @@ export const createUser = async (
 ) => {
   try {
     const { name, email, password, confirmPassword, gender } = req.body;
-    if (!email || !password || !name) {
+    const normalizedEmail = normalizeEmail(email);
+    const trimmedName = name?.trim();
+
+    if (!normalizedEmail || !password || !trimmedName) {
       return res.status(400).json({
         errorMessage: "Provide email, password and name.",
       });
@@ -35,8 +51,13 @@ export const createUser = async (
         errorMessage: "Passwords do not match.",
       });
     }
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: "insensitive",
+        },
+      },
     });
     if (existingUser) {
       return res.status(400).json({ message: "Invalid Credentials." });
@@ -55,8 +76,8 @@ export const createUser = async (
 
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: trimmedName,
+        email: normalizedEmail,
         password: hashedPassword,
         gender: gender ?? null,
         ...(imageUrl && { image: imageUrl }),
@@ -82,13 +103,23 @@ interface LoginBody {
 export const login = async (req: Request<{}, {}, LoginBody>, res: Response) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return res.status(400).json({ message: "Provide email and password." });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: "insensitive",
+        },
+      },
+      select: {
+        ...authUserSelect,
+        password: true,
+      },
     });
 
     if (!user) {
@@ -125,7 +156,11 @@ export const login = async (req: Request<{}, {}, LoginBody>, res: Response) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        gender: user.gender,
         image: user.image,
+        provider: user.provider,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
     });
   } catch (error) {
@@ -147,15 +182,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        gender: true,
-        image: true,
-        provider: true,
-        createdAt: true,
-      },
+      select: authUserSelect,
     });
 
     if (!user) {
@@ -509,7 +536,7 @@ export const googleLogin = async (
     }
 
     const googleId = payload.sub;
-    const email = payload.email;
+    const email = normalizeEmail(payload.email);
     const name = payload.name;
     const picture = payload.picture;
     const emailVerified = payload.email_verified;
@@ -526,20 +553,44 @@ export const googleLogin = async (
 
     let user = await prisma.user.findUnique({
       where: { googleId: googleIdValue },
+      select: authUserSelect,
     });
 
     if (!user) {
-      const existingByEmail = await prisma.user.findUnique({
-        where: { email: emailValue },
+      const existingByEmail = await prisma.user.findFirst({
+        where: {
+          email: {
+            equals: emailValue,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          ...authUserSelect,
+          googleId: true,
+          password: true,
+        },
       });
 
       if (existingByEmail) {
+        if (
+          existingByEmail.googleId &&
+          existingByEmail.googleId !== googleIdValue
+        ) {
+          return res.status(409).json({
+            message: "This email is already linked to a different Google account.",
+          });
+        }
+
         user = await prisma.user.update({
           where: { id: existingByEmail.id },
           data: {
             googleId: googleIdValue,
+            provider: existingByEmail.password
+              ? existingByEmail.provider
+              : "GOOGLE",
             ...(picture && { image: picture }),
           },
+          select: authUserSelect,
         });
       } else {
         const fallbackName = emailValue.split("@")[0] ?? "Google User";
@@ -552,6 +603,7 @@ export const googleLogin = async (
             googleId: googleIdValue,
             ...(picture && { image: picture }),
           },
+          select: authUserSelect,
         });
       }
     }
@@ -572,12 +624,7 @@ export const googleLogin = async (
 
     return res.status(200).json({
       authToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        image: user.image,
-      },
+      user,
     });
   } catch (error: unknown) {
     console.error(error);
