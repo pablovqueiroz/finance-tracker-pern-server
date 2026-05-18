@@ -11,7 +11,12 @@ export default function config(app: Application): void {
   const allowedOrigins = getAllowedOrigins();
 
   app.set("trust proxy", 1);
-  app.use(helmet());
+  app.use(
+    helmet({
+      // Google OAuth popup flows need opener access to remain available.
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    }),
+  );
 
   if (nodeEnv === "production" && allowedOrigins.length === 0) {
     console.warn(
